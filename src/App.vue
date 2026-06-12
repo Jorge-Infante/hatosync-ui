@@ -5,11 +5,22 @@
 </template>
 
 <script>
-export default {
-  name: "App",
+import { mapGetters, mapActions } from 'vuex'
 
-  data: () => ({
-    //
-  }),
-};
+export default {
+  name: 'App',
+  computed: {
+    ...mapGetters('auth', ['isAuthenticated']),
+  },
+  methods: {
+    ...mapActions('auth', ['fetchProfile']),
+  },
+  created() {
+    if (this.isAuthenticated) {
+      // Restore the profile from the stored session; on an invalid/expired
+      // refresh token the API client forces logout and redirects to login
+      this.fetchProfile().catch(() => {})
+    }
+  },
+}
 </script>

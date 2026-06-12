@@ -1,0 +1,128 @@
+/* Global styles — HatoSync design system: "editorial de campo"
+   Typography pairing: Fraunces (display serif) + Hanken Grotesk (UI/body). */
+
+:root {
+  --hs-font-display: 'Fraunces', Georgia, serif;
+  --hs-font-body: 'Hanken Grotesk', 'Segoe UI', system-ui, sans-serif;
+}
+
+.v-application {
+  font-family: var(--hs-font-body) !important;
+}
+
+/* Display serif for headings and titles, app-wide */
+.v-application .text-h1,
+.v-application .text-h2,
+.v-application .text-h3,
+.v-application .text-h4,
+.v-application .text-h5,
+.v-application .text-h6,
+.v-application .v-card-title,
+.v-application .v-toolbar-title {
+  font-family: var(--hs-font-display) !important;
+  letter-spacing: -0.015em !important;
+  font-variation-settings: 'opsz' 40;
+}
+
+/* Editorial overline: small caps, letterspaced, brand green */
+.hs-overline {
+  font-family: var(--hs-font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(var(--v-theme-primary));
+}
+
+/* Paper grain over the whole app — barely there, but it kills the "flat screen" feel */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Text selection in brand green */
+::selection {
+  background: rgba(46, 125, 50, 0.22);
+}
+
+/* Visible, branded keyboard focus */
+:focus-visible {
+  outline: 2px solid rgba(46, 125, 50, 0.6);
+  outline-offset: 2px;
+}
+
+/* Thin, unobtrusive scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(46, 82, 51, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(46, 82, 51, 0.4);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Cattle-brand stamp monogram (app bars, headers) — green-on-paper variant */
+.hs-stamp {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgb(var(--v-theme-primary));
+  border-radius: 50%;
+  outline: 1px dashed rgba(46, 125, 50, 0.4);
+  outline-offset: 3px;
+  color: rgb(var(--v-theme-primary));
+  font-family: var(--hs-font-display);
+  font-weight: 600;
+  font-style: italic;
+  font-size: 0.85rem;
+  flex: none;
+}
+
+/* Entrance motion: add .rise (+ .rise-d1…d6 for staggered reveals) */
+@keyframes hs-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  animation: hs-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rise-d1 { animation-delay: 0.06s; }
+.rise-d2 { animation-delay: 0.12s; }
+.rise-d3 { animation-delay: 0.18s; }
+.rise-d4 { animation-delay: 0.26s; }
+.rise-d5 { animation-delay: 0.34s; }
+.rise-d6 { animation-delay: 0.44s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
+/* Cards: hairline border warms up on hover instead of lifting with shadows */
+.v-card--variant-elevated,
+.v-card--variant-flat {
+  transition: border-color 0.25s ease;
+}
+.v-card:hover {
+  border-color: rgba(46, 125, 50, 0.35);
+}

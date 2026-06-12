@@ -2,8 +2,13 @@
 node_modules
 /dist
 
+# Documentos de trabajo locales
+CLAUDE.md
+NOTES.local.md
+
 
 # local env files
+.env
 .env.local
 .env.*.local
 
