@@ -3,6 +3,7 @@ import sharedStore from '@/modules/shared/store/shared_store'
 import authStore from '@/modules/auth/store/auth_store'
 import farmsStore from '@/modules/farms/store/farms_store'
 import livestockStore from '@/modules/livestock/store/livestock_store'
+import configurationStore from '@/modules/configuration/store/configuration_store'
 
 export default createStore({
   modules: {
@@ -10,5 +11,6 @@ export default createStore({
     auth: authStore,
     farms: farmsStore,
     livestock: livestockStore,
+    configuration: configurationStore,
   },
 })

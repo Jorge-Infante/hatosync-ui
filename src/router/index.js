@@ -3,6 +3,7 @@ import store from '@/store'
 import authRouter from '@/modules/auth/router'
 import farmsRouter from '@/modules/farms/router'
 import livestockRouter from '@/modules/livestock/router'
+import configurationRouter from '@/modules/configuration/router'
 
 const routes = [
   {
@@ -20,6 +21,10 @@ const routes = [
   {
     path: '/livestock',
     ...livestockRouter,
+  },
+  {
+    path: '/configuration',
+    ...configurationRouter,
   },
 ]
 

@@ -56,6 +56,15 @@ body::after {
   outline-offset: 2px;
 }
 
+/* Vuetify fields already paint their own focus state (outlined border turns
+   primary) — the global ring doubles the box inside the input, so drop it there */
+.v-field input:focus-visible,
+.v-field textarea:focus-visible,
+.v-field__input:focus-visible,
+.v-selection-control input:focus-visible {
+  outline: none;
+}
+
 /* Thin, unobtrusive scrollbars */
 ::-webkit-scrollbar {
   width: 8px;

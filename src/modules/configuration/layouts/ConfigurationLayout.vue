@@ -2,7 +2,7 @@
   <v-layout class="fill-height">
     <AppBar @toggle-drawer="drawer = !drawer" />
 
-    <NavigationDrawer v-model="drawer" :items="menuItems" title="Fincas" subtitle="Gestión y miembros" />
+    <NavigationDrawer v-model="drawer" :items="menuItems" title="Configuración" subtitle="Catálogos de la finca" />
 
     <v-main class="bg-background">
       <v-container fluid class="pa-4 pa-md-6">
@@ -20,7 +20,7 @@ import NavigationDrawer from '@/modules/shared/components/NavigationDrawer.vue'
 import menuItems from '@/modules/shared/menuItems'
 
 export default {
-  name: 'FarmsLayout',
+  name: 'ConfigurationLayout',
   components: { AppBar, NavigationDrawer },
   data() {
     return {

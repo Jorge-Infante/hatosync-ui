@@ -5,6 +5,7 @@ node_modules
 # Documentos de trabajo locales
 CLAUDE.md
 NOTES.local.md
+.claude
 
 
 # local env files

@@ -17,6 +17,7 @@
 import { mapGetters } from 'vuex'
 import AppBar from '@/modules/shared/components/AppBar.vue'
 import NavigationDrawer from '@/modules/shared/components/NavigationDrawer.vue'
+import menuItems from '@/modules/shared/menuItems'
 
 export default {
   name: 'LivestockLayout',
@@ -24,10 +25,7 @@ export default {
   data() {
     return {
       drawer: true,
-      menuItems: [
-        { title: 'Animales', icon: 'mdi-cow', to: { name: 'livestock-animals' } },
-        { title: 'Mis fincas', icon: 'mdi-barn', to: { name: 'farm-list' } },
-      ],
+      menuItems,
     }
   },
   computed: {

@@ -106,7 +106,15 @@
           </template>
 
           <template #[`item.actions`]="{ item }">
-            <AnimalActionsMenu :animal="item" @edit="$refs.animalFormDialog.open(item)" @delete="askDelete(item)" />
+            <AnimalActionsMenu
+              :animal="item"
+              @edit="$refs.animalFormDialog.open(item)"
+              @delete="askDelete(item)"
+              @birth="$refs.birthDialog.open(item)"
+              @wean="$refs.weanDialog.open(item)"
+              @events="$refs.reproEventsDialog.open(item)"
+              @genealogy="$refs.genealogyDialog.open(item)"
+            />
           </template>
         </v-data-table>
       </v-card>
@@ -124,7 +132,15 @@
             <v-card-title>{{ animal.name }}</v-card-title>
             <v-card-subtitle>{{ animal.sex_display }} · {{ formatAge(animal.birth_date) }}</v-card-subtitle>
             <template #append>
-              <AnimalActionsMenu :animal="animal" @edit="$refs.animalFormDialog.open(animal)" @delete="askDelete(animal)" />
+              <AnimalActionsMenu
+                :animal="animal"
+                @edit="$refs.animalFormDialog.open(animal)"
+                @delete="askDelete(animal)"
+                @birth="$refs.birthDialog.open(animal)"
+                @wean="$refs.weanDialog.open(animal)"
+                @events="$refs.reproEventsDialog.open(animal)"
+                @genealogy="$refs.genealogyDialog.open(animal)"
+              />
             </template>
           </v-card-item>
           <v-card-text class="d-flex flex-wrap align-center ga-2 pt-0">
@@ -147,6 +163,10 @@
     </template>
 
     <AnimalFormDialog ref="animalFormDialog" @saved="onSaved" />
+    <RegisterBirthDialog ref="birthDialog" @saved="onBirthSaved" />
+    <WeanDialog ref="weanDialog" @saved="notify('Destete registrado')" />
+    <ReproductionEventsDialog ref="reproEventsDialog" @saved="notify('Evento reproductivo registrado')" />
+    <GenealogyDialog ref="genealogyDialog" />
 
     <!-- Delete confirmation -->
     <v-dialog v-model="deleteDialog" max-width="420">
@@ -176,17 +196,22 @@ import { getErrorMessage } from '@/api/errors'
 import { API_ORIGIN } from '@/api/client'
 import AnimalFormDialog from '@/modules/livestock/components/AnimalFormDialog.vue'
 import AnimalActionsMenu from '@/modules/livestock/components/AnimalActionsMenu.vue'
-
-const REPRO_STATUS_COLORS = {
-  OPEN: 'warning',
-  SERVED: 'info',
-  PREGNANT: 'success',
-  CALVED: 'secondary',
-}
+import RegisterBirthDialog from '@/modules/livestock/components/RegisterBirthDialog.vue'
+import WeanDialog from '@/modules/livestock/components/WeanDialog.vue'
+import ReproductionEventsDialog from '@/modules/livestock/components/ReproductionEventsDialog.vue'
+import GenealogyDialog from '@/modules/livestock/components/GenealogyDialog.vue'
+import { REPRO_STATUS_COLORS } from '@/modules/livestock/constants'
 
 export default {
   name: 'AnimalListPage',
-  components: { AnimalFormDialog, AnimalActionsMenu },
+  components: {
+    AnimalFormDialog,
+    AnimalActionsMenu,
+    RegisterBirthDialog,
+    WeanDialog,
+    ReproductionEventsDialog,
+    GenealogyDialog,
+  },
   data() {
     return {
       loading: false,
@@ -289,6 +314,9 @@ export default {
     },
     onSaved({ isEdit }) {
       this.notify(isEdit ? 'Animal actualizado' : 'Animal registrado')
+    },
+    onBirthSaved({ calfName }) {
+      this.notify(calfName ? `Parto registrado · ${calfName} se añadió al hato` : 'Parto registrado')
     },
     notify(text, color = 'success') {
       this.snackbar = { show: true, text, color }
