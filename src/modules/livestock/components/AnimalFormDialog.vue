@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" max-width="560" persistent scrollable>
+  <v-dialog v-model="dialog" max-width="600" persistent scrollable>
     <v-card>
       <v-card-title class="d-flex align-center pt-4 px-6">
         <v-icon color="primary" class="mr-2">{{ isEdit ? 'mdi-pencil-outline' : 'mdi-plus' }}</v-icon>
@@ -15,6 +15,61 @@
           Entrada de inventario: compras o carga del hato inicial. Los nacimientos en la finca
           se registrarán desde la madre con el evento de parto.
         </p>
+
+        <!-- Photos -->
+        <div class="mb-5">
+          <p class="hs-overline mb-2">Fotos</p>
+
+          <div
+            v-if="!hasPhotos"
+            class="photo-dropzone"
+            :class="{ 'photo-dropzone--over': dragOver }"
+            role="button"
+            tabindex="0"
+            @click="pickFiles"
+            @keydown.enter.prevent="pickFiles"
+            @keydown.space.prevent="pickFiles"
+            @dragover.prevent="dragOver = true"
+            @dragleave.prevent="dragOver = false"
+            @drop.prevent="onDrop"
+          >
+            <div class="photo-dropzone__icon">
+              <v-icon size="26">mdi-camera-plus-outline</v-icon>
+            </div>
+            <p class="photo-dropzone__title">Agrega fotos del animal</p>
+            <p class="photo-dropzone__hint">Arrastra aquí o haz clic · JPG o PNG</p>
+          </div>
+
+          <div
+            v-else
+            class="photo-grid"
+            :class="{ 'photo-grid--over': dragOver }"
+            @dragover.prevent="dragOver = true"
+            @dragleave.prevent="dragOver = false"
+            @drop.prevent="onDrop"
+          >
+            <div v-for="(photo, i) in allPhotos" :key="photo.key" class="photo-tile">
+              <v-img :src="photo.url" cover height="88" width="88" />
+              <span v-if="i === 0" class="photo-tile__cover">Portada</span>
+              <button type="button" class="photo-tile__remove" aria-label="Quitar foto" @click="removePhoto(photo)">
+                <v-icon size="14">mdi-close</v-icon>
+              </button>
+            </div>
+
+            <button type="button" class="photo-add" aria-label="Agregar foto" @click="pickFiles">
+              <v-icon size="22">mdi-plus</v-icon>
+            </button>
+          </div>
+
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            multiple
+            class="d-none"
+            @change="onFilesChosen"
+          />
+        </div>
 
         <v-form ref="form" @submit.prevent="handleSubmit">
           <v-text-field
@@ -66,6 +121,39 @@
             no-data-text="No hay machos registrados"
             class="mb-2"
           />
+
+          <!-- Per-farm catalogs: only shown when the farm has set them up -->
+          <div v-if="catalogsLoading" class="d-flex align-center ga-2 text-caption text-medium-emphasis py-2">
+            <v-progress-circular indeterminate size="16" width="2" color="primary" />
+            Cargando catálogos de la finca…
+          </div>
+
+          <v-select
+            v-if="activeBreeds.length"
+            v-model="form.breed"
+            label="Raza (opcional)"
+            :items="breedOptions"
+            prepend-inner-icon="mdi-dna"
+            clearable
+            class="mb-2"
+          />
+
+          <template v-if="activeIdentificationTypes.length">
+            <p class="hs-overline mt-3 mb-2">Identificación</p>
+            <v-text-field
+              v-for="type in activeIdentificationTypes"
+              :key="type.id"
+              :label="type.name"
+              :model-value="idValues[type.id]"
+              prepend-inner-icon="mdi-tag-outline"
+              inputmode="numeric"
+              clearable
+              :hint="type.is_unique ? 'Único: no se puede repetir en la finca' : 'Puede repetirse entre animales'"
+              persistent-hint
+              class="mb-3"
+              @update:model-value="setIdValue(type.id, $event)"
+            />
+          </template>
         </v-form>
       </v-card-text>
 
@@ -83,6 +171,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { getErrorMessage } from '@/api/errors'
+import { API_ORIGIN } from '@/api/client'
 
 const emptyForm = () => ({
   name: '',
@@ -90,6 +179,7 @@ const emptyForm = () => ({
   birth_date: '',
   mother: null,
   father: null,
+  breed: null,
 })
 
 export default {
@@ -102,6 +192,16 @@ export default {
       error: '',
       editId: null,
       form: emptyForm(),
+      // Identification values keyed by identification_type id (digit strings)
+      idValues: {},
+      catalogsLoading: false,
+      // Photos — the new File objects and removed existing ids are exposed here
+      // for the submit wiring (upload via POST /animals/{id}/photos/).
+      photos: [], // { key, file, url }  newly picked images
+      existingPhotos: [], // { key, id, url }  from animal.photos on edit
+      removedPhotoIds: [], // existing photo ids the user removed
+      dragOver: false,
+      photoSeq: 0,
       sexOptions: [
         { title: 'Hembra', value: 'FEMALE' },
         { title: 'Macho', value: 'MALE' },
@@ -113,6 +213,7 @@ export default {
   },
   computed: {
     ...mapGetters('livestock', ['females', 'males']),
+    ...mapGetters('configuration', ['activeBreeds', 'activeIdentificationTypes']),
     isEdit() {
       return this.editId !== null
     },
@@ -125,9 +226,20 @@ export default {
     fatherOptions() {
       return this.toOptions(this.males)
     },
+    breedOptions() {
+      return this.activeBreeds.map((breed) => ({ title: breed.name, value: breed.id }))
+    },
+    hasPhotos() {
+      return this.existingPhotos.length > 0 || this.photos.length > 0
+    },
+    // Cover first: existing photos, then newly picked ones
+    allPhotos() {
+      return [...this.existingPhotos, ...this.photos]
+    },
   },
   methods: {
     ...mapActions('shared', ['createItem', 'updateItem']),
+    ...mapActions('livestock', ['syncAnimalPhotos']),
     toOptions(animals) {
       return animals
         .filter((animal) => animal.id !== this.editId)
@@ -143,14 +255,96 @@ export default {
             birth_date: animal.birth_date || '',
             mother: animal.mother || null,
             father: animal.father || null,
+            breed: animal.breed || null,
           }
         : emptyForm()
+
+      this.idValues = {}
+      if (animal && Array.isArray(animal.identifications)) {
+        animal.identifications.forEach((id) => {
+          this.idValues[id.identification_type] = id.value
+        })
+      }
+
+      this.resetPhotos()
+      if (animal && Array.isArray(animal.photos)) {
+        this.existingPhotos = animal.photos.map((photo) => ({
+          key: `e${photo.id}`,
+          id: photo.id,
+          url: photo.image && photo.image.startsWith('http') ? photo.image : `${API_ORIGIN}${photo.image}`,
+        }))
+      }
+
       this.error = ''
       this.dialog = true
+      this.loadCatalogs()
     },
     close() {
       this.dialog = false
+      this.resetPhotos()
     },
+    async loadCatalogs() {
+      this.catalogsLoading = true
+      try {
+        await Promise.all([
+          this.$store.dispatch('shared/fetchState', {
+            module: 'configuration',
+            nameState: 'breeds',
+            url: '/configuration/breeds/',
+          }),
+          this.$store.dispatch('shared/fetchState', {
+            module: 'configuration',
+            nameState: 'identificationTypes',
+            url: '/configuration/identification-types/',
+          }),
+        ])
+      } catch (e) {
+        // Catalogs are optional; a failure just means no breed/ID fields are shown
+        this.error = getErrorMessage(e, 'No se pudieron cargar los catálogos de la finca')
+      } finally {
+        this.catalogsLoading = false
+      }
+    },
+    setIdValue(typeId, value) {
+      // Keep digits only, preserve leading zeros (it's a string like "0001")
+      this.idValues[typeId] = (value || '').replace(/\D/g, '')
+    },
+    // --- Photos ---------------------------------------------------------
+    pickFiles() {
+      this.$refs.fileInput.click()
+    },
+    onFilesChosen(event) {
+      this.addFiles(event.target.files)
+      event.target.value = '' // allow re-picking the same file
+    },
+    onDrop(event) {
+      this.dragOver = false
+      this.addFiles(event.dataTransfer.files)
+    },
+    addFiles(fileList) {
+      Array.from(fileList || [])
+        .filter((file) => file.type.startsWith('image/'))
+        .forEach((file) => {
+          this.photos.push({ key: `n${this.photoSeq++}`, file, url: URL.createObjectURL(file) })
+        })
+    },
+    removePhoto(photo) {
+      if (photo.id != null) {
+        this.removedPhotoIds.push(photo.id)
+        this.existingPhotos = this.existingPhotos.filter((p) => p.key !== photo.key)
+      } else {
+        URL.revokeObjectURL(photo.url)
+        this.photos = this.photos.filter((p) => p.key !== photo.key)
+      }
+    },
+    resetPhotos() {
+      this.photos.forEach((p) => URL.revokeObjectURL(p.url))
+      this.photos = []
+      this.existingPhotos = []
+      this.removedPhotoIds = []
+      this.dragOver = false
+    },
+    // --------------------------------------------------------------------
     buildPayload() {
       const payload = {
         name: this.form.name,
@@ -159,11 +353,25 @@ export default {
         father: this.form.father,
       }
       if (this.form.birth_date) payload.birth_date = this.form.birth_date
-      if (!this.isEdit) {
-        // On create, omit empty optionals (birth_date defaults to today server-side)
+
+      if (this.isEdit) {
+        // PATCH: send breed (incl. null to clear)
+        payload.breed = this.form.breed
+      } else {
+        if (this.form.breed != null) payload.breed = this.form.breed
         if (payload.mother === null) delete payload.mother
         if (payload.father === null) delete payload.father
       }
+
+      // identifications: only touch them when the catalog is available, otherwise
+      // omit the key so the backend leaves the existing set untouched (PATCH).
+      if (this.activeIdentificationTypes.length) {
+        const ids = this.activeIdentificationTypes
+          .map((type) => ({ identification_type: type.id, value: (this.idValues[type.id] || '').trim() }))
+          .filter((entry) => entry.value)
+        if (this.isEdit || ids.length) payload.identifications = ids
+      }
+
       return payload
     },
     async handleSubmit() {
@@ -189,6 +397,17 @@ export default {
             data: this.buildPayload(),
           })
         }
+
+        // Photos use a separate multipart endpoint, so they upload after the
+        // animal exists. refreshAnimals (inside the action) updates list avatars.
+        if (this.photos.length || this.removedPhotoIds.length) {
+          await this.syncAnimalPhotos({
+            animalId: animal.id,
+            newFiles: this.photos.map((p) => p.file),
+            removedIds: this.removedPhotoIds,
+          })
+        }
+
         this.$emit('saved', { animal, isEdit: this.isEdit })
         this.close()
       } catch (e) {
@@ -198,5 +417,137 @@ export default {
       }
     },
   },
+  beforeUnmount() {
+    this.photos.forEach((p) => URL.revokeObjectURL(p.url))
+  },
 }
 </script>
+
+<style scoped>
+/* Empty state: a calm, dashed editorial well */
+.photo-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 26px 16px;
+  border: 1.5px dashed rgba(46, 82, 51, 0.3);
+  border-radius: 16px;
+  background: rgba(46, 125, 50, 0.03);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.photo-dropzone:hover,
+.photo-dropzone:focus-visible,
+.photo-dropzone--over {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(46, 125, 50, 0.07);
+  outline: none;
+}
+.photo-dropzone__icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(46, 125, 50, 0.1);
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 10px;
+}
+.photo-dropzone__title {
+  font-weight: 500;
+  font-size: 0.92rem;
+  margin: 0;
+}
+.photo-dropzone__hint {
+  font-size: 0.74rem;
+  color: rgba(34, 43, 35, 0.55);
+  margin: 2px 0 0;
+}
+
+/* Filled state: a tidy strip of thumbnails */
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(46, 82, 51, 0.16);
+  border-radius: 16px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.photo-grid--over {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(46, 125, 50, 0.05);
+}
+
+.photo-tile {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(46, 82, 51, 0.16);
+}
+.photo-tile__cover {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(46, 125, 50, 0.92);
+}
+.photo-tile__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(27, 43, 29, 0.55);
+  opacity: 0;
+  transition: opacity 0.18s ease, background-color 0.18s ease;
+}
+.photo-tile:hover .photo-tile__remove {
+  opacity: 1;
+}
+.photo-tile__remove:hover {
+  background: rgb(var(--v-theme-error));
+}
+
+.photo-add {
+  width: 88px;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1.5px dashed rgba(46, 82, 51, 0.3);
+  color: rgba(46, 125, 50, 0.8);
+  background: rgba(46, 125, 50, 0.03);
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.photo-add:hover {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(46, 125, 50, 0.07);
+  color: rgb(var(--v-theme-primary));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-dropzone,
+  .photo-grid,
+  .photo-tile__remove,
+  .photo-add {
+    transition: none;
+  }
+}
+</style>

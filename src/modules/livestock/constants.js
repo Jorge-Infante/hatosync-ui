@@ -12,5 +12,5 @@ export const REPRO_EVENT_META = {
   NATURAL_MATING: { label: 'Monta natural', icon: 'mdi-cow', color: 'accent' },
   PREGNANCY_CHECK: { label: 'Chequeo de preñez', icon: 'mdi-stethoscope', color: 'info' },
   ABORTION: { label: 'Aborto', icon: 'mdi-alert-circle-outline', color: 'error' },
-  WEANING: { label: 'Destete', icon: 'mdi-baby-bottle-off-outline', color: 'secondary' },
+  WEANING: { label: 'Destete', icon: 'mdi-link-variant-off', color: 'secondary' },
 }

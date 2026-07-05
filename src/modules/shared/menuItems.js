@@ -14,7 +14,7 @@ export default [
     children: [
       { title: 'Razas', icon: 'mdi-dna', to: { name: 'config-breeds' } },
       {
-        title: 'Tipos de identificación',
+        title: 'Identificación',
         icon: 'mdi-tag-multiple-outline',
         to: { name: 'config-identification-types' },
       },

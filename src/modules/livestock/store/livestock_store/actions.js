@@ -19,6 +19,13 @@ export default {
     return data
   },
 
+  // Full dossier for the animal detail screen: own fields + breed +
+  // identifications + photos[] + reproduction + reproductive_events[] + offspring[].
+  async fetchAnimalFull(context, animalId) {
+    const { data } = await apiClient.get(`/livestock/animals/${animalId}/full/`)
+    return data
+  },
+
   // Recursive ancestor tree for the genealogy graphic (depth 1..5, default 3)
   async fetchGenealogy(context, { animalId, depth = 3 }) {
     const { data } = await apiClient.get(`/livestock/animals/${animalId}/genealogy/`, {
@@ -45,5 +52,20 @@ export default {
     const res = await apiClient.post(`/livestock/animals/${animalId}/reproduction/wean/`, data)
     await dispatch('refreshAnimals')
     return res.data
+  },
+
+  // Photos are a separate multipart endpoint (image + optional caption); the
+  // animal must already exist. Uploads run in order so the first stays the
+  // cover, then deletions, then a herd refresh so list avatars update.
+  async syncAnimalPhotos({ dispatch }, { animalId, newFiles = [], removedIds = [] }) {
+    for (const file of newFiles) {
+      const formData = new FormData()
+      formData.append('image', file)
+      await apiClient.post(`/livestock/animals/${animalId}/photos/`, formData)
+    }
+    for (const photoId of removedIds) {
+      await apiClient.delete(`/livestock/animals/${animalId}/photos/${photoId}/`)
+    }
+    if (newFiles.length || removedIds.length) await dispatch('refreshAnimals')
   },
 }

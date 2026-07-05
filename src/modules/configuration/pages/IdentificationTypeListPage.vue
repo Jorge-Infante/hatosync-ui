@@ -1,7 +1,7 @@
 <template>
   <div>
     <CatalogList
-      title="Tipos de identificación"
+      title="Identificación"
       overline="Catálogo de la finca"
       subtitle="Cómo identificas a tus animales: chapeta, hierro, tatuaje…"
       new-label="Nuevo tipo"

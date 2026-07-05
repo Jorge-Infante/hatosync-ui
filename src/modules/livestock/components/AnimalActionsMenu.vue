@@ -12,6 +12,15 @@
       </div>
 
       <v-list density="compact" slim bg-color="transparent" class="py-1">
+        <v-list-item class="hs-actions__item" @click="$emit('detail', animal)">
+          <template #prepend>
+            <v-icon size="18" class="hs-actions__icon">mdi-card-account-details-outline</v-icon>
+          </template>
+          <v-list-item-title>Ver detalle</v-list-item-title>
+        </v-list-item>
+
+        <v-divider class="my-1 mx-4" />
+
         <template v-if="isFemale">
           <p class="hs-actions__label">Reproducción</p>
 
@@ -24,7 +33,7 @@
 
           <v-list-item class="hs-actions__item" :disabled="!hasCalfAtSide" @click="$emit('wean', animal)">
             <template #prepend>
-              <v-icon size="18" class="hs-actions__icon">mdi-baby-bottle-off-outline</v-icon>
+              <v-icon size="18" class="hs-actions__icon">mdi-link-variant-off</v-icon>
             </template>
             <v-list-item-title>Destetar cría</v-list-item-title>
             <v-list-item-subtitle v-if="!hasCalfAtSide">Sin cría al pie</v-list-item-subtitle>
@@ -76,7 +85,7 @@ export default {
       required: true,
     },
   },
-  emits: ['edit', 'delete', 'birth', 'wean', 'events', 'genealogy'],
+  emits: ['detail', 'edit', 'delete', 'birth', 'wean', 'events', 'genealogy'],
   computed: {
     isFemale() {
       return this.animal.sex === 'FEMALE'

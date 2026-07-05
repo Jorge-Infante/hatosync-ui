@@ -2,7 +2,7 @@
   <v-dialog v-model="dialog" max-width="480" persistent>
     <v-card>
       <v-card-title class="d-flex align-center pt-4 px-6">
-        <v-icon color="primary" class="mr-2">mdi-baby-bottle-off-outline</v-icon>
+        <v-icon color="primary" class="mr-2">mdi-link-variant-off</v-icon>
         Destetar cría
       </v-card-title>
 

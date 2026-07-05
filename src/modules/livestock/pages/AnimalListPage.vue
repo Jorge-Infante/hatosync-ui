@@ -63,13 +63,13 @@
           hide-default-footer
         >
           <template #[`item.name`]="{ item }">
-            <div class="d-flex align-center py-2">
+            <div class="d-flex align-center py-2 animal-cell" @click="goToDetail(item)">
               <v-avatar size="38" color="primary" variant="tonal" class="mr-3">
                 <v-img v-if="photoUrl(item)" :src="photoUrl(item)" cover />
                 <v-icon v-else size="20">{{ sexIcon(item) }}</v-icon>
               </v-avatar>
               <div>
-                <span class="font-weight-medium">{{ item.name }}</span>
+                <span class="font-weight-medium animal-cell__name">{{ item.name }}</span>
                 <p class="text-caption text-medium-emphasis ma-0">{{ formatAge(item.birth_date) }}</p>
               </div>
             </div>
@@ -108,6 +108,7 @@
           <template #[`item.actions`]="{ item }">
             <AnimalActionsMenu
               :animal="item"
+              @detail="goToDetail(item)"
               @edit="$refs.animalFormDialog.open(item)"
               @delete="askDelete(item)"
               @birth="$refs.birthDialog.open(item)"
@@ -122,7 +123,7 @@
       <!-- Mobile: cards -->
       <div class="d-md-none">
         <v-card v-for="animal in filteredAnimals" :key="animal.id" class="mb-3">
-          <v-card-item>
+          <v-card-item @click="goToDetail(animal)">
             <template #prepend>
               <v-avatar size="44" color="primary" variant="tonal">
                 <v-img v-if="photoUrl(animal)" :src="photoUrl(animal)" cover />
@@ -132,15 +133,18 @@
             <v-card-title>{{ animal.name }}</v-card-title>
             <v-card-subtitle>{{ animal.sex_display }} · {{ formatAge(animal.birth_date) }}</v-card-subtitle>
             <template #append>
-              <AnimalActionsMenu
-                :animal="animal"
-                @edit="$refs.animalFormDialog.open(animal)"
-                @delete="askDelete(animal)"
-                @birth="$refs.birthDialog.open(animal)"
-                @wean="$refs.weanDialog.open(animal)"
-                @events="$refs.reproEventsDialog.open(animal)"
-                @genealogy="$refs.genealogyDialog.open(animal)"
-              />
+              <span @click.stop>
+                <AnimalActionsMenu
+                  :animal="animal"
+                  @detail="goToDetail(animal)"
+                  @edit="$refs.animalFormDialog.open(animal)"
+                  @delete="askDelete(animal)"
+                  @birth="$refs.birthDialog.open(animal)"
+                  @wean="$refs.weanDialog.open(animal)"
+                  @events="$refs.reproEventsDialog.open(animal)"
+                  @genealogy="$refs.genealogyDialog.open(animal)"
+                />
+              </span>
             </template>
           </v-card-item>
           <v-card-text class="d-flex flex-wrap align-center ga-2 pt-0">
@@ -260,10 +264,14 @@ export default {
         this.loading = false
       }
     },
+    goToDetail(animal) {
+      this.$router.push({ name: 'livestock-animal-detail', params: { id: animal.id } })
+    },
     photoUrl(animal) {
-      const photo = animal.photos && animal.photos[0]
-      if (!photo || !photo.image) return ''
-      return photo.image.startsWith('http') ? photo.image : `${API_ORIGIN}${photo.image}`
+      // List serializer gives primary_photo (newest photo URL); older shape used photos[]
+      const url = animal.primary_photo || (animal.photos && animal.photos[0] && animal.photos[0].image)
+      if (!url) return ''
+      return url.startsWith('http') ? url : `${API_ORIGIN}${url}`
     },
     sexIcon(animal) {
       return animal.sex === 'FEMALE' ? 'mdi-gender-female' : 'mdi-gender-male'
@@ -329,5 +337,14 @@ export default {
 .search-field {
   max-width: 360px;
   min-width: 240px;
+}
+.animal-cell {
+  cursor: pointer;
+}
+.animal-cell__name {
+  transition: color 0.18s ease;
+}
+.animal-cell:hover .animal-cell__name {
+  color: rgb(var(--v-theme-primary));
 }
 </style>
