@@ -126,12 +126,15 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('livestock', ['males']),
+    ...mapGetters('livestock', ['males', 'externalMales']),
     today() {
       return new Date().toISOString().slice(0, 10)
     },
     sireOptions() {
-      return this.males.map((animal) => ({ title: animal.name, value: animal.id }))
+      return [
+        ...this.males.map((animal) => ({ title: animal.name, value: animal.id })),
+        ...this.externalMales.map((animal) => ({ title: `${animal.name} (externo)`, value: animal.id })),
+      ]
     },
   },
   methods: {

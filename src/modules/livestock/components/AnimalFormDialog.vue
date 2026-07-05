@@ -15,6 +15,9 @@
           Entrada de inventario: compras o carga del hato inicial. Los nacimientos en la finca
           se registrarán desde la madre con el evento de parto.
         </p>
+        <v-chip v-if="isEdit && external" size="small" color="secondary" variant="tonal" prepend-icon="mdi-dna" class="mb-4">
+          Genética externa (no aparece en el hato)
+        </v-chip>
 
         <!-- Photos -->
         <div class="mb-5">
@@ -154,6 +157,17 @@
               @update:model-value="setIdValue(type.id, $event)"
             />
           </template>
+
+          <!-- External genetics: referenced in genealogy/events, never part of the herd -->
+          <v-checkbox
+            v-if="!isEdit"
+            v-model="external"
+            label="Genética externa"
+            hint="Pajilla de semen o toro/vaca que no es tuyo: se puede usar como padre o madre en la genealogía, pero no aparecerá en el hato"
+            persistent-hint
+            density="comfortable"
+            class="mt-2"
+          />
         </v-form>
       </v-card-text>
 
@@ -191,6 +205,7 @@ export default {
       saving: false,
       error: '',
       editId: null,
+      external: false, // create-only; the flag is immutable server-side after create
       form: emptyForm(),
       // Identification values keyed by identification_type id (digit strings)
       idValues: {},
@@ -212,7 +227,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('livestock', ['females', 'males']),
+    ...mapGetters('livestock', ['females', 'males', 'externalFemales', 'externalMales']),
     ...mapGetters('configuration', ['activeBreeds', 'activeIdentificationTypes']),
     isEdit() {
       return this.editId !== null
@@ -221,10 +236,10 @@ export default {
       return new Date().toISOString().slice(0, 10)
     },
     motherOptions() {
-      return this.toOptions(this.females)
+      return [...this.toOptions(this.females), ...this.toOptions(this.externalFemales, 'externa')]
     },
     fatherOptions() {
-      return this.toOptions(this.males)
+      return [...this.toOptions(this.males), ...this.toOptions(this.externalMales, 'externo')]
     },
     breedOptions() {
       return this.activeBreeds.map((breed) => ({ title: breed.name, value: breed.id }))
@@ -240,14 +255,18 @@ export default {
   methods: {
     ...mapActions('shared', ['createItem', 'updateItem']),
     ...mapActions('livestock', ['syncAnimalPhotos']),
-    toOptions(animals) {
+    toOptions(animals, externalLabel = '') {
       return animals
         .filter((animal) => animal.id !== this.editId)
-        .map((animal) => ({ title: animal.name, value: animal.id }))
+        .map((animal) => ({
+          title: externalLabel ? `${animal.name} (${externalLabel})` : animal.name,
+          value: animal.id,
+        }))
     },
     // Called from the parent via ref: open() to create, open(animal) to edit
     open(animal = null) {
       this.editId = animal ? animal.id : null
+      this.external = animal ? !!animal.is_external : false
       this.form = animal
         ? {
             name: animal.name || '',
@@ -361,6 +380,7 @@ export default {
         if (this.form.breed != null) payload.breed = this.form.breed
         if (payload.mother === null) delete payload.mother
         if (payload.father === null) delete payload.father
+        if (this.external) payload.is_external = true
       }
 
       // identifications: only touch them when the catalog is available, otherwise
@@ -381,18 +401,20 @@ export default {
       this.saving = true
       this.error = ''
       try {
+        // Externals live in their own state slice so they never join the herd list
+        const nameState = this.external ? 'externals' : 'animals'
         let animal
         if (this.isEdit) {
           animal = await this.updateItem({
             module: 'livestock',
-            nameState: 'animals',
+            nameState,
             url: `/livestock/animals/${this.editId}/`,
             data: this.buildPayload(),
           })
         } else {
           animal = await this.createItem({
             module: 'livestock',
-            nameState: 'animals',
+            nameState,
             url: '/livestock/animals/',
             data: this.buildPayload(),
           })

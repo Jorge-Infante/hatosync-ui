@@ -115,6 +115,7 @@
               @wean="$refs.weanDialog.open(item)"
               @events="$refs.reproEventsDialog.open(item)"
               @genealogy="$refs.genealogyDialog.open(item)"
+              @weight="$refs.weightDialog.open(item)"
             />
           </template>
         </v-data-table>
@@ -143,6 +144,7 @@
                   @wean="$refs.weanDialog.open(animal)"
                   @events="$refs.reproEventsDialog.open(animal)"
                   @genealogy="$refs.genealogyDialog.open(animal)"
+                  @weight="$refs.weightDialog.open(animal)"
                 />
               </span>
             </template>
@@ -171,6 +173,7 @@
     <WeanDialog ref="weanDialog" @saved="notify('Destete registrado')" />
     <ReproductionEventsDialog ref="reproEventsDialog" @saved="notify('Evento reproductivo registrado')" />
     <GenealogyDialog ref="genealogyDialog" />
+    <WeightFormDialog ref="weightDialog" @saved="onWeightSaved" />
 
     <!-- Delete confirmation -->
     <v-dialog v-model="deleteDialog" max-width="420">
@@ -204,6 +207,7 @@ import RegisterBirthDialog from '@/modules/livestock/components/RegisterBirthDia
 import WeanDialog from '@/modules/livestock/components/WeanDialog.vue'
 import ReproductionEventsDialog from '@/modules/livestock/components/ReproductionEventsDialog.vue'
 import GenealogyDialog from '@/modules/livestock/components/GenealogyDialog.vue'
+import WeightFormDialog from '@/modules/livestock/components/WeightFormDialog.vue'
 import { REPRO_STATUS_COLORS } from '@/modules/livestock/constants'
 
 export default {
@@ -215,6 +219,7 @@ export default {
     WeanDialog,
     ReproductionEventsDialog,
     GenealogyDialog,
+    WeightFormDialog,
   },
   data() {
     return {
@@ -257,7 +262,12 @@ export default {
     async loadAnimals() {
       this.loading = true
       try {
-        await this.fetchState({ module: 'livestock', nameState: 'animals', url: '/livestock/animals/' })
+        // Externals (semen straws / rental bulls) feed the parent/sire pickers
+        // of the dialogs opened from this page; they never join the herd list.
+        await Promise.all([
+          this.fetchState({ module: 'livestock', nameState: 'animals', url: '/livestock/animals/' }),
+          this.fetchState({ module: 'livestock', nameState: 'externals', url: '/livestock/animals/', params: { external: true } }),
+        ])
       } catch (e) {
         this.notify(getErrorMessage(e, 'No se pudieron cargar los animales'), 'error')
       } finally {
@@ -325,6 +335,9 @@ export default {
     },
     onBirthSaved({ calfName }) {
       this.notify(calfName ? `Parto registrado · ${calfName} se añadió al hato` : 'Parto registrado')
+    },
+    onWeightSaved({ animal, record }) {
+      this.notify(`Peso de ${animal.name} registrado: ${record.weight_kg} kg`)
     },
     notify(text, color = 'success') {
       this.snackbar = { show: true, text, color }

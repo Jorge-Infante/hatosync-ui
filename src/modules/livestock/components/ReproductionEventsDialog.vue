@@ -208,7 +208,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('livestock', ['males', 'animalById']),
+    ...mapGetters('livestock', ['males', 'externalMales', 'animalById']),
     // Resolved from the store so status chips refresh after each new event
     animal() {
       return this.animalId !== null ? this.animalById(this.animalId) : null
@@ -223,7 +223,10 @@ export default {
       return new Date().toISOString().slice(0, 10)
     },
     sireOptions() {
-      return this.males.map((animal) => ({ title: animal.name, value: animal.id }))
+      return [
+        ...this.males.map((animal) => ({ title: animal.name, value: animal.id })),
+        ...this.externalMales.map((animal) => ({ title: `${animal.name} (externo)`, value: animal.id })),
+      ]
     },
     needsSire() {
       return ['INSEMINATION', 'NATURAL_MATING'].includes(this.form.event_type)

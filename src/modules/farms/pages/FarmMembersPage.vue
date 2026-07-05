@@ -254,7 +254,7 @@ export default {
       }
     },
     onSaved({ isEdit }) {
-      this.notify(isEdit ? 'Rol actualizado' : 'Miembro agregado')
+      this.notify(isEdit ? 'Miembro actualizado' : 'Miembro agregado')
     },
     notify(text, color = 'success') {
       this.snackbar = { show: true, text, color }

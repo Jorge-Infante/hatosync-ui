@@ -70,6 +70,7 @@
                   <p class="hs-gen-card__name">{{ slot.node.name }}</p>
                   <p class="hs-gen-card__meta">
                     {{ slot.node.sex_display }}<template v-if="birthYear(slot.node)"> · {{ birthYear(slot.node) }}</template>
+                    <template v-if="slot.node.is_external"> · Externo</template>
                     <template v-if="!slot.node.is_active"> · Inactivo</template>
                     <template v-if="slot.node.has_more_ancestors"> · +ancestros</template>
                   </p>
@@ -85,6 +86,7 @@
           <span><span class="hs-gen-dot hs-gen-dot--male" /> Macho</span>
           <span class="hs-gen-legend-ghost">Sin registro</span>
           <span class="hs-gen-legend-inactive">Atenuado: inactivo (vendido / muerto)</span>
+          <span>Externo: genética fuera del hato (pajilla / toro alquilado)</span>
         </div>
       </v-card-text>
 

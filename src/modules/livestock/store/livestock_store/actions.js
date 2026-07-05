@@ -54,6 +54,22 @@ export default {
     return res.data
   },
 
+  // Control de peso: pesajes por animal. La comparativa contra el pesaje
+  // anterior (previous_weight_kg / diff_kg) viene derivada del backend.
+  async fetchWeights(context, animalId) {
+    const { data } = await apiClient.get(`/livestock/animals/${animalId}/weights/`)
+    return data
+  },
+
+  async createWeight(context, { animalId, data }) {
+    const res = await apiClient.post(`/livestock/animals/${animalId}/weights/`, data)
+    return res.data
+  },
+
+  async deleteWeight(context, { animalId, weightId }) {
+    await apiClient.delete(`/livestock/animals/${animalId}/weights/${weightId}/`)
+  },
+
   // Photos are a separate multipart endpoint (image + optional caption); the
   // animal must already exist. Uploads run in order so the first stays the
   // cover, then deletions, then a herd refresh so list avatars update.

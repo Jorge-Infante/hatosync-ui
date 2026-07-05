@@ -33,6 +33,9 @@
               <p class="hs-overline mb-1">{{ animal.breed_name || 'Ficha del animal' }}</p>
               <div class="d-flex align-center flex-wrap ga-3">
                 <h1 class="detail-name">{{ animal.name }}</h1>
+                <v-chip v-if="animal.is_external" size="small" color="secondary" variant="tonal" prepend-icon="mdi-dna">
+                  Genética externa
+                </v-chip>
                 <v-chip v-if="!animal.is_active" size="small" color="error" variant="tonal">Inactivo</v-chip>
               </div>
             </div>
@@ -133,6 +136,7 @@
           <v-tab value="ficha">Ficha</v-tab>
           <v-tab v-if="isFemale" value="repro">Reproducción</v-tab>
           <v-tab value="offspring">Descendencia</v-tab>
+          <v-tab value="peso">Peso</v-tab>
         </v-tabs>
         <v-divider />
 
@@ -252,9 +256,79 @@
               </v-row>
             </div>
           </v-window-item>
+
+          <!-- Control de peso -->
+          <v-window-item value="peso">
+            <div class="pa-5">
+              <div class="d-flex align-center mb-2">
+                <p class="hs-overline mb-0">Control de peso</p>
+                <v-spacer />
+                <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="$refs.weightDialog.open(animal)">
+                  Registrar peso
+                </v-btn>
+              </div>
+
+              <p v-if="!weights.length" class="text-body-2 text-medium-emphasis text-center py-6 mb-0">
+                Aún no hay pesajes registrados.
+              </p>
+              <!-- Curva de peso: con un solo pesaje no hay tendencia que graficar -->
+              <WeightChart v-if="weights.length >= 2" :records="weights" class="mb-4" />
+              <v-timeline v-if="weights.length" density="compact" side="end" align="start" truncate-line="both">
+                <v-timeline-item
+                  v-for="record in weights"
+                  :key="record.id"
+                  :dot-color="weightDiffMeta(record).color"
+                  icon="mdi-scale"
+                  size="small"
+                >
+                  <div class="d-flex align-center flex-wrap ga-2">
+                    <span class="font-weight-medium">{{ formatKg(record.weight_kg) }} kg</span>
+                    <v-chip
+                      size="x-small"
+                      :color="weightDiffMeta(record).color"
+                      :prepend-icon="weightDiffMeta(record).icon"
+                      variant="tonal"
+                    >
+                      {{ weightDiffMeta(record).label }}
+                    </v-chip>
+                    <v-spacer />
+                    <v-btn
+                      icon="mdi-delete-outline"
+                      variant="text"
+                      size="x-small"
+                      color="error"
+                      @click="askDeleteWeight(record)"
+                    />
+                  </div>
+                  <p class="text-caption text-medium-emphasis mb-0">
+                    {{ formatDate(record.date) }}
+                    <template v-if="record.recorded_by_name"> · Registró: {{ record.recorded_by_name }}</template>
+                  </p>
+                  <p v-if="record.notes" class="text-caption mb-0">{{ record.notes }}</p>
+                </v-timeline-item>
+              </v-timeline>
+            </div>
+          </v-window-item>
         </v-window>
       </v-card>
     </template>
+
+    <!-- Weight record delete confirmation -->
+    <v-dialog v-model="deleteWeightDialog" max-width="420">
+      <v-card>
+        <v-card-title class="pt-4 px-6">¿Eliminar pesaje?</v-card-title>
+        <v-card-text class="px-6">
+          Se eliminará el registro de
+          <strong>{{ weightToDelete && formatKg(weightToDelete.weight_kg) }} kg</strong>
+          del {{ weightToDelete && formatDate(weightToDelete.date) }}. La comparativa se recalculará.
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer />
+          <v-btn variant="text" :disabled="deletingWeight" @click="deleteWeightDialog = false">Cancelar</v-btn>
+          <v-btn color="error" variant="flat" :loading="deletingWeight" @click="confirmDeleteWeight">Eliminar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Action dialogs (reused) -->
     <AnimalFormDialog ref="editDialog" @saved="reload" />
@@ -262,6 +336,7 @@
     <WeanDialog ref="weanDialog" @saved="onReproChanged" />
     <ReproductionEventsDialog ref="eventsDialog" @saved="reload" />
     <GenealogyDialog ref="genealogyDialog" />
+    <WeightFormDialog ref="weightDialog" @saved="onWeightSaved" />
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3500">
       {{ snackbar.text }}
@@ -279,6 +354,8 @@ import RegisterBirthDialog from '@/modules/livestock/components/RegisterBirthDia
 import WeanDialog from '@/modules/livestock/components/WeanDialog.vue'
 import ReproductionEventsDialog from '@/modules/livestock/components/ReproductionEventsDialog.vue'
 import GenealogyDialog from '@/modules/livestock/components/GenealogyDialog.vue'
+import WeightFormDialog from '@/modules/livestock/components/WeightFormDialog.vue'
+import WeightChart from '@/modules/livestock/components/WeightChart.vue'
 
 export default {
   name: 'AnimalDetailPage',
@@ -289,6 +366,8 @@ export default {
     WeanDialog,
     ReproductionEventsDialog,
     GenealogyDialog,
+    WeightFormDialog,
+    WeightChart,
   },
   data() {
     return {
@@ -296,6 +375,9 @@ export default {
       loading: false,
       error: '',
       tab: 'ficha',
+      deleteWeightDialog: false,
+      weightToDelete: null,
+      deletingWeight: false,
       snackbar: { show: false, text: '', color: 'success' },
     }
   },
@@ -322,6 +404,10 @@ export default {
     },
     offspring() {
       return (this.animal && this.animal.offspring) || []
+    },
+    weights() {
+      // full/ trae los pesajes con previous_weight_kg/diff_kg ya derivados
+      return (this.animal && this.animal.weight_records) || []
     },
     age() {
       return this.formatAge(this.animal && this.animal.birth_date)
@@ -350,13 +436,48 @@ export default {
   created() {
     this.load()
     // Reused dialogs (sire/mother autocompletes, animalById) need the herd list
+    // and the external genetics for the sire/parent pickers
     if (!this.animals.length) {
       this.fetchState({ module: 'livestock', nameState: 'animals', url: '/livestock/animals/' }).catch(() => {})
     }
+    this.fetchState({ module: 'livestock', nameState: 'externals', url: '/livestock/animals/', params: { external: true } }).catch(() => {})
   },
   methods: {
-    ...mapActions('livestock', ['fetchAnimalFull']),
+    ...mapActions('livestock', ['fetchAnimalFull', 'deleteWeight']),
     ...mapActions('shared', ['fetchState']),
+    formatKg(value) {
+      const n = Number(value)
+      return Number.isNaN(n) ? value : n.toLocaleString('es-CO', { maximumFractionDigits: 2 })
+    },
+    // Comparativa contra el pesaje anterior: subió (verde), bajó (rojo), igual o primero
+    weightDiffMeta(record) {
+      const diff = record.diff_kg == null ? null : Number(record.diff_kg)
+      if (diff == null) return { color: 'secondary', icon: 'mdi-flag-outline', label: 'Primer registro' }
+      if (diff > 0) return { color: 'success', icon: 'mdi-arrow-up', label: `Subió ${this.formatKg(diff)} kg` }
+      if (diff < 0) return { color: 'error', icon: 'mdi-arrow-down', label: `Bajó ${this.formatKg(Math.abs(diff))} kg` }
+      return { color: 'secondary', icon: 'mdi-equal', label: 'Sin cambio' }
+    },
+    askDeleteWeight(record) {
+      this.weightToDelete = record
+      this.deleteWeightDialog = true
+    },
+    async confirmDeleteWeight() {
+      this.deletingWeight = true
+      try {
+        await this.deleteWeight({ animalId: this.animalId, weightId: this.weightToDelete.id })
+        this.deleteWeightDialog = false
+        this.notify('Pesaje eliminado')
+        this.load()
+      } catch (e) {
+        this.notify(getErrorMessage(e, 'No se pudo eliminar el pesaje'), 'error')
+      } finally {
+        this.deletingWeight = false
+      }
+    },
+    onWeightSaved({ record }) {
+      this.notify(`Peso registrado: ${this.formatKg(record.weight_kg)} kg`)
+      this.load()
+    },
     async load() {
       this.loading = true
       this.error = ''
