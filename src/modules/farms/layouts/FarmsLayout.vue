@@ -17,7 +17,7 @@
 import { mapGetters } from 'vuex'
 import AppBar from '@/modules/shared/components/AppBar.vue'
 import NavigationDrawer from '@/modules/shared/components/NavigationDrawer.vue'
-import menuItems from '@/modules/shared/menuItems'
+import { visibleMenuItems } from '@/modules/shared/menuItems'
 
 export default {
   name: 'FarmsLayout',
@@ -25,11 +25,13 @@ export default {
   data() {
     return {
       drawer: true,
-      menuItems,
     }
   },
   computed: {
-    ...mapGetters('auth', ['activeFarmId']),
+    ...mapGetters('auth', ['activeFarmId', 'activeFarmRole']),
+    menuItems() {
+      return visibleMenuItems(this.activeFarmRole)
+    },
   },
 }
 </script>

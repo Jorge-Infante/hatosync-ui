@@ -141,6 +141,19 @@
             class="mb-2"
           />
 
+          <!-- Asignación a un miembro (regla del socio): solo la maneja un admin -->
+          <v-select
+            v-if="isFarmAdmin && memberOptions.length"
+            v-model="form.assigned_to"
+            label="Asignado a (opcional)"
+            :items="memberOptions"
+            prepend-inner-icon="mdi-account-outline"
+            hint="Un socio solo podrá consultar los animales asignados a él"
+            persistent-hint
+            clearable
+            class="mb-2"
+          />
+
           <template v-if="activeIdentificationTypes.length">
             <p class="hs-overline mt-3 mb-2">Identificación</p>
             <v-text-field
@@ -194,6 +207,7 @@ const emptyForm = () => ({
   mother: null,
   father: null,
   breed: null,
+  assigned_to: null,
 })
 
 export default {
@@ -229,6 +243,8 @@ export default {
   computed: {
     ...mapGetters('livestock', ['females', 'males', 'externalFemales', 'externalMales']),
     ...mapGetters('configuration', ['activeBreeds', 'activeIdentificationTypes']),
+    ...mapGetters('auth', ['isFarmAdmin', 'activeFarmId']),
+    ...mapGetters('farms', ['allFarms', 'allMembers']),
     isEdit() {
       return this.editId !== null
     },
@@ -243,6 +259,17 @@ export default {
     },
     breedOptions() {
       return this.activeBreeds.map((breed) => ({ title: breed.name, value: breed.id }))
+    },
+    // Miembros para "Asignado a": fuente = la lista VIVA de /farms/members/
+    // (se refresca al abrir el diálogo); los members embebidos en GET /farms/
+    // son solo respaldo — ese snapshot queda viejo al crear/editar miembros.
+    memberOptions() {
+      const farm = this.allFarms.find((f) => f.id === this.activeFarmId)
+      const source = this.allMembers.length ? this.allMembers : (farm && farm.members) || []
+      return source.map((member) => ({
+        title: `${member.full_name} (${member.role_display})`,
+        value: member.id,
+      }))
     },
     hasPhotos() {
       return this.existingPhotos.length > 0 || this.photos.length > 0
@@ -275,6 +302,7 @@ export default {
             mother: animal.mother || null,
             father: animal.father || null,
             breed: animal.breed || null,
+            assigned_to: animal.assigned_to || null,
           }
         : emptyForm()
 
@@ -305,7 +333,7 @@ export default {
     async loadCatalogs() {
       this.catalogsLoading = true
       try {
-        await Promise.all([
+        const requests = [
           this.$store.dispatch('shared/fetchState', {
             module: 'configuration',
             nameState: 'breeds',
@@ -316,7 +344,17 @@ export default {
             nameState: 'identificationTypes',
             url: '/configuration/identification-types/',
           }),
-        ])
+        ]
+        if (this.isFarmAdmin) {
+          // Miembros frescos para "Asignado a" (endpoint admin-only); si falla
+          // queda el respaldo embebido de GET /farms/.
+          requests.push(
+            this.$store
+              .dispatch('shared/fetchState', { module: 'farms', nameState: 'members', url: '/farms/members/' })
+              .catch(() => {})
+          )
+        }
+        await Promise.all(requests)
       } catch (e) {
         // Catalogs are optional; a failure just means no breed/ID fields are shown
         this.error = getErrorMessage(e, 'No se pudieron cargar los catálogos de la finca')
@@ -381,6 +419,13 @@ export default {
         if (payload.mother === null) delete payload.mother
         if (payload.father === null) delete payload.father
         if (this.external) payload.is_external = true
+      }
+
+      // Solo un admin puede (des)asignar el animal a un miembro; los demás
+      // omiten la clave para que el backend no rechace el guardado.
+      if (this.isFarmAdmin) {
+        if (this.isEdit) payload.assigned_to = this.form.assigned_to
+        else if (this.form.assigned_to != null) payload.assigned_to = this.form.assigned_to
       }
 
       // identifications: only touch them when the catalog is available, otherwise

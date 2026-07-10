@@ -12,6 +12,7 @@
     "apexcharts": "^5.16.0",
     "axios": "^1.13.6",
     "core-js": "^3.8.3",
+    "firebase": "^12.15.0",
     "gsap": "^3.15.0",
     "postcss-discard-duplicates": "^7.0.2",
     "register-service-worker": "^1.7.2",

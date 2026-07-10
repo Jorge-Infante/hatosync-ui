@@ -4,6 +4,8 @@ import authStore from '@/modules/auth/store/auth_store'
 import farmsStore from '@/modules/farms/store/farms_store'
 import livestockStore from '@/modules/livestock/store/livestock_store'
 import configurationStore from '@/modules/configuration/store/configuration_store'
+import notificationsStore from '@/modules/notifications/store/notifications_store'
+import healthStore from '@/modules/health/store/health_store'
 
 export default createStore({
   modules: {
@@ -12,5 +14,7 @@ export default createStore({
     farms: farmsStore,
     livestock: livestockStore,
     configuration: configurationStore,
+    notifications: notificationsStore,
+    health: healthStore,
   },
 })

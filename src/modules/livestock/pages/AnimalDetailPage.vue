@@ -40,7 +40,20 @@
               </div>
             </div>
 
-            <v-speed-dial location="bottom center" transition="fade-transition">
+            <!-- Socio: solo consulta — únicamente la genealogía, sin acciones de escritura -->
+            <v-btn
+              v-if="isPartner"
+              icon="mdi-family-tree"
+              rounded="circle"
+              variant="tonal"
+              color="primary"
+              size="large"
+              aria-label="Genealogía"
+              class="detail-fab"
+              @click="$refs.genealogyDialog.open(animal)"
+            />
+
+            <v-speed-dial v-else location="bottom center" transition="fade-transition">
               <template #activator="{ props: activatorProps }">
                 <v-btn
                   v-bind="activatorProps"
@@ -137,6 +150,7 @@
           <v-tab v-if="isFemale" value="repro">Reproducción</v-tab>
           <v-tab value="offspring">Descendencia</v-tab>
           <v-tab value="peso">Peso</v-tab>
+          <v-tab value="sanidad">Sanidad</v-tab>
         </v-tabs>
         <v-divider />
 
@@ -149,6 +163,7 @@
                 <div class="detail-dl__row"><dt>Nacimiento</dt><dd>{{ formatDate(animal.birth_date) }}</dd></div>
                 <div class="detail-dl__row"><dt>Edad</dt><dd>{{ age }}</dd></div>
                 <div class="detail-dl__row"><dt>Raza</dt><dd>{{ animal.breed_name || '—' }}</dd></div>
+                <div class="detail-dl__row"><dt>Asignado a</dt><dd>{{ animal.assigned_to_name || '—' }}</dd></div>
                 <div class="detail-dl__row">
                   <dt>Identificación</dt>
                   <dd>
@@ -192,7 +207,14 @@
               <div class="d-flex align-center mb-2">
                 <p class="hs-overline mb-0">Historial</p>
                 <v-spacer />
-                <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="$refs.eventsDialog.open(animal)">
+                <v-btn
+                  v-if="!isPartner"
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  prepend-icon="mdi-plus"
+                  @click="$refs.eventsDialog.open(animal)"
+                >
                   Registrar evento
                 </v-btn>
               </div>
@@ -263,7 +285,14 @@
               <div class="d-flex align-center mb-2">
                 <p class="hs-overline mb-0">Control de peso</p>
                 <v-spacer />
-                <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="$refs.weightDialog.open(animal)">
+                <v-btn
+                  v-if="!isPartner"
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  prepend-icon="mdi-plus"
+                  @click="$refs.weightDialog.open(animal)"
+                >
                   Registrar peso
                 </v-btn>
               </div>
@@ -293,6 +322,7 @@
                     </v-chip>
                     <v-spacer />
                     <v-btn
+                      v-if="!isPartner"
                       icon="mdi-delete-outline"
                       variant="text"
                       size="x-small"
@@ -307,6 +337,18 @@
                   <p v-if="record.notes" class="text-caption mb-0">{{ record.notes }}</p>
                 </v-timeline-item>
               </v-timeline>
+            </div>
+          </v-window-item>
+
+          <!-- Sanidad -->
+          <v-window-item value="sanidad">
+            <div class="pa-5">
+              <AnimalHealthTab
+                :animal="animal"
+                :treatments="treatments"
+                :can-write="!isPartner"
+                @changed="onHealthChanged"
+              />
             </div>
           </v-window-item>
         </v-window>
@@ -356,6 +398,7 @@ import ReproductionEventsDialog from '@/modules/livestock/components/Reproductio
 import GenealogyDialog from '@/modules/livestock/components/GenealogyDialog.vue'
 import WeightFormDialog from '@/modules/livestock/components/WeightFormDialog.vue'
 import WeightChart from '@/modules/livestock/components/WeightChart.vue'
+import AnimalHealthTab from '@/modules/health/components/AnimalHealthTab.vue'
 
 export default {
   name: 'AnimalDetailPage',
@@ -368,6 +411,7 @@ export default {
     GenealogyDialog,
     WeightFormDialog,
     WeightChart,
+    AnimalHealthTab,
   },
   data() {
     return {
@@ -383,6 +427,7 @@ export default {
   },
   computed: {
     ...mapGetters('livestock', { animals: 'allAnimals' }),
+    ...mapGetters('auth', ['isPartner']),
     animalId() {
       // El id del animal es un UUID (string), no un entero.
       return this.$route.params.id
@@ -408,6 +453,10 @@ export default {
     weights() {
       // full/ trae los pesajes con previous_weight_kg/diff_kg ya derivados
       return (this.animal && this.animal.weight_records) || []
+    },
+    treatments() {
+      // full/ embebe treatments[] con sus applications[], más reciente primero
+      return (this.animal && this.animal.treatments) || []
     },
     age() {
       return this.formatAge(this.animal && this.animal.birth_date)
@@ -476,6 +525,14 @@ export default {
     },
     onWeightSaved({ record }) {
       this.notify(`Peso registrado: ${this.formatKg(record.weight_kg)} kg`)
+      this.load()
+    },
+    onHealthChanged(payload) {
+      if (payload && payload.error) {
+        this.notify(payload.error, 'error')
+        return
+      }
+      this.notify('Sanidad actualizada')
       this.load()
     },
     async load() {

@@ -38,7 +38,8 @@
             <v-card-title>{{ farm.name }}</v-card-title>
             <v-card-subtitle>{{ farmLocation(farm) }}</v-card-subtitle>
             <template #append>
-              <v-menu>
+              <!-- Editar/eliminar la finca es solo para OWNER/ADMIN de ESA finca -->
+              <v-menu v-if="canManageFarm(farm)">
                 <template #activator="{ props: menuProps }">
                   <v-btn v-bind="menuProps" icon="mdi-dots-vertical" variant="text" size="small" />
                 </template>
@@ -103,13 +104,23 @@ export default {
   },
   computed: {
     ...mapGetters('farms', { farms: 'allFarms' }),
-    ...mapGetters('auth', ['activeFarmId']),
+    ...mapGetters('auth', ['activeFarmId', 'currentUser']),
   },
   created() {
     this.loadFarms()
   },
   methods: {
     ...mapActions('shared', ['fetchState', 'deleteItem']),
+    // El rol es por finca: aquí no sirve activeFarmRole, se busca mi membresía
+    // en los members embebidos de cada finca.
+    canManageFarm(farm) {
+      if (!this.currentUser) return false
+      const membership = (farm.members || []).find((member) => {
+        const userId = member.user && typeof member.user === 'object' ? member.user.id : member.user
+        return userId === this.currentUser.id
+      })
+      return !!membership && ['OWNER', 'ADMIN'].includes(membership.role)
+    },
     async loadFarms() {
       this.loading = true
       try {

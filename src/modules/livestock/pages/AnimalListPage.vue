@@ -6,10 +6,12 @@
         <p class="hs-overline mb-1">Inventario del hato</p>
         <h1 class="text-h5 font-weight-bold">Animales</h1>
         <p class="text-body-2 text-medium-emphasis">
-          Compras, hato inicial y todo lo que pasta en {{ activeFarmName || 'tu finca' }}.
+          {{ isPartner
+            ? 'Los animales asociados a ti en ' + (activeFarmName || 'la finca') + ' (solo consulta).'
+            : 'Compras, hato inicial y todo lo que pasta en ' + (activeFarmName || 'tu finca') + '.' }}
         </p>
       </div>
-      <v-btn color="primary" prepend-icon="mdi-plus" @click="$refs.animalFormDialog.open()">
+      <v-btn v-if="!isPartner" color="primary" prepend-icon="mdi-plus" @click="$refs.animalFormDialog.open()">
         Nuevo animal
       </v-btn>
     </div>
@@ -38,11 +40,19 @@
     <!-- Empty herd -->
     <v-card v-else-if="animals.length === 0" class="pa-10 text-center rise rise-d2">
       <v-icon size="56" color="primary" class="mb-3">mdi-cow-off</v-icon>
-      <h2 class="text-h6 font-weight-bold mb-1">Tu hato está vacío</h2>
-      <p class="text-body-2 text-medium-emphasis mb-4">
-        Registra tu primer animal para empezar el inventario de esta finca.
-      </p>
-      <v-btn color="primary" prepend-icon="mdi-plus" @click="$refs.animalFormDialog.open()">Nuevo animal</v-btn>
+      <template v-if="isPartner">
+        <h2 class="text-h6 font-weight-bold mb-1">Aún no tienes animales asociados</h2>
+        <p class="text-body-2 text-medium-emphasis">
+          Cuando un administrador te asigne animales, aparecerán aquí.
+        </p>
+      </template>
+      <template v-else>
+        <h2 class="text-h6 font-weight-bold mb-1">Tu hato está vacío</h2>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          Registra tu primer animal para empezar el inventario de esta finca.
+        </p>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="$refs.animalFormDialog.open()">Nuevo animal</v-btn>
+      </template>
     </v-card>
 
     <!-- No search matches -->
@@ -55,7 +65,7 @@
       <!-- Desktop: table -->
       <v-card class="d-none d-md-block rise rise-d2">
         <v-data-table
-          :headers="headers"
+          :headers="tableHeaders"
           :items="filteredAnimals"
           :items-per-page="-1"
           density="comfortable"
@@ -107,6 +117,7 @@
 
           <template #[`item.actions`]="{ item }">
             <AnimalActionsMenu
+              v-if="!isPartner"
               :animal="item"
               @detail="goToDetail(item)"
               @edit="$refs.animalFormDialog.open(item)"
@@ -116,6 +127,7 @@
               @events="$refs.reproEventsDialog.open(item)"
               @genealogy="$refs.genealogyDialog.open(item)"
               @weight="$refs.weightDialog.open(item)"
+              @treatment="$refs.treatmentDialog.open(item)"
             />
           </template>
         </v-data-table>
@@ -134,7 +146,7 @@
             <v-card-title>{{ animal.name }}</v-card-title>
             <v-card-subtitle>{{ animal.sex_display }} · {{ formatAge(animal.birth_date) }}</v-card-subtitle>
             <template #append>
-              <span @click.stop>
+              <span v-if="!isPartner" @click.stop>
                 <AnimalActionsMenu
                   :animal="animal"
                   @detail="goToDetail(animal)"
@@ -145,6 +157,7 @@
                   @events="$refs.reproEventsDialog.open(animal)"
                   @genealogy="$refs.genealogyDialog.open(animal)"
                   @weight="$refs.weightDialog.open(animal)"
+                  @treatment="$refs.treatmentDialog.open(animal)"
                 />
               </span>
             </template>
@@ -174,6 +187,7 @@
     <ReproductionEventsDialog ref="reproEventsDialog" @saved="notify('Evento reproductivo registrado')" />
     <GenealogyDialog ref="genealogyDialog" />
     <WeightFormDialog ref="weightDialog" @saved="onWeightSaved" />
+    <TreatmentFormDialog ref="treatmentDialog" @saved="notify('Tratamiento creado')" />
 
     <!-- Delete confirmation -->
     <v-dialog v-model="deleteDialog" max-width="420">
@@ -208,6 +222,7 @@ import WeanDialog from '@/modules/livestock/components/WeanDialog.vue'
 import ReproductionEventsDialog from '@/modules/livestock/components/ReproductionEventsDialog.vue'
 import GenealogyDialog from '@/modules/livestock/components/GenealogyDialog.vue'
 import WeightFormDialog from '@/modules/livestock/components/WeightFormDialog.vue'
+import TreatmentFormDialog from '@/modules/health/components/TreatmentFormDialog.vue'
 import { REPRO_STATUS_COLORS } from '@/modules/livestock/constants'
 
 export default {
@@ -220,6 +235,7 @@ export default {
     ReproductionEventsDialog,
     GenealogyDialog,
     WeightFormDialog,
+    TreatmentFormDialog,
   },
   data() {
     return {
@@ -243,7 +259,11 @@ export default {
   computed: {
     ...mapGetters('livestock', { animals: 'allAnimals' }),
     ...mapGetters('livestock', ['females', 'males']),
-    ...mapGetters('auth', ['activeFarmName']),
+    ...mapGetters('auth', ['activeFarmName', 'isPartner']),
+    // El socio es de solo consulta: sin columna de acciones.
+    tableHeaders() {
+      return this.isPartner ? this.headers.filter((h) => h.key !== 'actions') : this.headers
+    },
     filteredAnimals() {
       const query = (this.search || '').trim().toLowerCase()
       if (!query) return this.animals

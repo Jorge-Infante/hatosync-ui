@@ -51,6 +51,13 @@
 
         <p class="hs-actions__label">Gestión</p>
 
+        <v-list-item class="hs-actions__item" @click="$emit('treatment', animal)">
+          <template #prepend>
+            <v-icon size="18" class="hs-actions__icon">mdi-medical-bag</v-icon>
+          </template>
+          <v-list-item-title>Nuevo tratamiento</v-list-item-title>
+        </v-list-item>
+
         <v-list-item class="hs-actions__item" @click="$emit('weight', animal)">
           <template #prepend>
             <v-icon size="18" class="hs-actions__icon">mdi-scale</v-icon>
@@ -92,7 +99,7 @@ export default {
       required: true,
     },
   },
-  emits: ['detail', 'edit', 'delete', 'birth', 'wean', 'events', 'genealogy', 'weight'],
+  emits: ['detail', 'edit', 'delete', 'birth', 'wean', 'events', 'genealogy', 'weight', 'treatment'],
   computed: {
     isFemale() {
       return this.animal.sex === 'FEMALE'

@@ -43,6 +43,9 @@
       </v-list>
     </v-menu>
 
+    <!-- Notificaciones: badge + historial + activación del push web -->
+    <NotificationsMenu />
+
     <!-- User menu -->
     <v-menu>
       <template #activator="{ props: menuProps }">
@@ -68,14 +71,16 @@
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { getErrorMessage } from '@/api/errors'
+import NotificationsMenu from './NotificationsMenu.vue'
 
 /**
- * Shared app header: brand, active-farm selector and user menu.
+ * Shared app header: brand, active-farm selector, notifications and user menu.
  * Switching farm updates auth.user.active_farm — layouts key their
  * <router-view> on activeFarmId so every farm-scoped page reloads.
  */
 export default {
   name: 'AppBar',
+  components: { NotificationsMenu },
   emits: ['toggle-drawer'],
   data() {
     return {

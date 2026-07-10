@@ -2,7 +2,7 @@
   <v-layout class="fill-height">
     <AppBar @toggle-drawer="drawer = !drawer" />
 
-    <NavigationDrawer v-model="drawer" :items="menuItems" title="Hato" subtitle="Inventario y manejo" />
+    <NavigationDrawer v-model="drawer" :items="menuItems" title="Sanidad" subtitle="Agenda y protocolos" />
 
     <v-main class="bg-background">
       <v-container fluid class="pa-4 pa-md-6">
@@ -20,7 +20,7 @@ import NavigationDrawer from '@/modules/shared/components/NavigationDrawer.vue'
 import { visibleMenuItems } from '@/modules/shared/menuItems'
 
 export default {
-  name: 'LivestockLayout',
+  name: 'HealthLayout',
   components: { AppBar, NavigationDrawer },
   data() {
     return {
