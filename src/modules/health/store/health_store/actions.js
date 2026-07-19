@@ -14,6 +14,24 @@ export default {
     )
   },
 
+  // Programados recurrentes (avisar-y-ejecutar). CRUD por el shared store.
+  async fetchSchedules({ dispatch }) {
+    return dispatch(
+      'shared/fetchState',
+      { module: 'health', nameState: 'schedules', url: '/health/schedules/' },
+      { root: true }
+    )
+  },
+
+  // Jornadas de protocolo ejecutadas (historial).
+  async fetchBatches({ dispatch }) {
+    return dispatch(
+      'shared/fetchState',
+      { module: 'health', nameState: 'batches', url: '/reproduction/batches/' },
+      { root: true }
+    )
+  },
+
   // Agenda sanitaria: aplicaciones filtrables por estado/animal/rango/vencidas.
   async fetchApplications({ dispatch }, params = {}) {
     return dispatch(

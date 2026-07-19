@@ -75,7 +75,7 @@
                 <v-icon>mdi-family-tree</v-icon>
                 <v-tooltip activator="parent" location="start">Genealogía</v-tooltip>
               </v-btn>
-              <v-btn v-if="isFemale" icon rounded="circle" variant="tonal" color="secondary" @click="$refs.birthDialog.open(animal)">
+              <v-btn v-if="isFemale" icon rounded="circle" variant="tonal" color="secondary" @click="$refs.editDialog.openBirth(animal)">
                 <v-icon>mdi-baby-bottle-outline</v-icon>
                 <v-tooltip activator="parent" location="start">Registrar parto</v-tooltip>
               </v-btn>
@@ -91,6 +91,17 @@
                 <v-icon>mdi-link-variant-off</v-icon>
                 <v-tooltip activator="parent" location="start">Destetar</v-tooltip>
               </v-btn>
+              <v-btn
+                v-if="animal.is_active && !animal.is_external"
+                icon
+                rounded="circle"
+                variant="tonal"
+                color="accent"
+                @click="$refs.inactivateDialog.open(animal)"
+              >
+                <v-icon>mdi-logout-variant</v-icon>
+                <v-tooltip activator="parent" location="start">Sacar del hato</v-tooltip>
+              </v-btn>
             </v-speed-dial>
           </div>
 
@@ -98,11 +109,14 @@
             <v-chip size="small" :color="sexColor" :prepend-icon="sexIcon" variant="tonal">
               {{ animal.sex_display }}
             </v-chip>
-            <v-chip v-if="repro.status" size="small" :color="statusColor(repro.status)">
-              {{ repro.status_display }}
-            </v-chip>
-            <v-chip v-if="repro.calf_at_side" size="small" color="accent" prepend-icon="mdi-baby-bottle-outline">
-              Cría al pie
+            <v-chip
+              v-for="chip in reproChips(repro)"
+              :key="chip.key"
+              size="small"
+              :color="chip.color"
+              :prepend-icon="chip.icon || undefined"
+            >
+              {{ chip.label }}
             </v-chip>
             <v-chip
               v-for="id in animal.identifications || []"
@@ -112,6 +126,15 @@
               prepend-icon="mdi-tag-outline"
             >
               {{ id.identification_type_name }} {{ id.value }}
+            </v-chip>
+            <v-chip
+              v-if="animal.tag_code"
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-qrcode"
+              @click="$refs.tagQrDialog.open(animal.tag_code)"
+            >
+              {{ formatTagCode(animal.tag_code) }}
             </v-chip>
           </div>
 
@@ -163,6 +186,7 @@
                 <div class="detail-dl__row"><dt>Nacimiento</dt><dd>{{ formatDate(animal.birth_date) }}</dd></div>
                 <div class="detail-dl__row"><dt>Edad</dt><dd>{{ age }}</dd></div>
                 <div class="detail-dl__row"><dt>Raza</dt><dd>{{ animal.breed_name || '—' }}</dd></div>
+                <div class="detail-dl__row"><dt>Lote</dt><dd>{{ animal.lot_name || '—' }}</dd></div>
                 <div class="detail-dl__row"><dt>Asignado a</dt><dd>{{ animal.assigned_to_name || '—' }}</dd></div>
                 <div class="detail-dl__row">
                   <dt>Identificación</dt>
@@ -173,6 +197,57 @@
                       </span>
                     </template>
                     <span v-else class="text-medium-emphasis">—</span>
+                  </dd>
+                </div>
+                <div class="detail-dl__row">
+                  <dt>Chapeta QR</dt>
+                  <dd>
+                    <template v-if="animal.tag_code">
+                      <strong style="font-family: monospace">{{ formatTagCode(animal.tag_code) }}</strong>
+                      <v-btn
+                        size="x-small"
+                        variant="text"
+                        color="primary"
+                        prepend-icon="mdi-qrcode"
+                        class="ms-2"
+                        @click="$refs.tagQrDialog.open(animal.tag_code)"
+                      >
+                        Ver QR
+                      </v-btn>
+                      <template v-if="!isPartner && animal.is_active && !animal.is_external">
+                        <v-btn
+                          size="x-small"
+                          variant="text"
+                          color="accent"
+                          prepend-icon="mdi-qrcode-plus"
+                          @click="$refs.tagAssignDialog.open(animal)"
+                        >
+                          Reponer
+                        </v-btn>
+                        <v-btn
+                          size="x-small"
+                          variant="text"
+                          color="error"
+                          prepend-icon="mdi-qrcode-remove"
+                          @click="$refs.tagUnassignDialog.open(animal)"
+                        >
+                          Quitar
+                        </v-btn>
+                      </template>
+                    </template>
+                    <template v-else>
+                      <span class="text-medium-emphasis me-2">Sin chapeta</span>
+                      <v-btn
+                        v-if="!isPartner && animal.is_active && !animal.is_external"
+                        size="x-small"
+                        variant="tonal"
+                        color="primary"
+                        prepend-icon="mdi-qrcode-plus"
+                        @click="$refs.tagAssignDialog.open(animal)"
+                      >
+                        Asociar chapeta
+                      </v-btn>
+                    </template>
                   </dd>
                 </div>
                 <div class="detail-dl__row"><dt>Estado</dt><dd>{{ animal.is_active ? 'Activo' : 'Inactivo' }}</dd></div>
@@ -186,7 +261,17 @@
               <div class="detail-repro-grid mb-5">
                 <div class="detail-repro-cell">
                   <p class="detail-mini-label">Estado</p>
-                  <v-chip v-if="repro.status" size="small" :color="statusColor(repro.status)">{{ repro.status_display }}</v-chip>
+                  <span v-if="reproChips(repro).length" class="d-flex flex-wrap ga-1">
+                    <v-chip
+                      v-for="chip in reproChips(repro)"
+                      :key="chip.key"
+                      size="small"
+                      :color="chip.color"
+                      :prepend-icon="chip.icon || undefined"
+                    >
+                      {{ chip.label }}
+                    </v-chip>
+                  </span>
                   <span v-else class="text-medium-emphasis">—</span>
                 </div>
                 <div class="detail-repro-cell">
@@ -374,11 +459,14 @@
 
     <!-- Action dialogs (reused) -->
     <AnimalFormDialog ref="editDialog" @saved="reload" />
-    <RegisterBirthDialog ref="birthDialog" @saved="onReproChanged" />
     <WeanDialog ref="weanDialog" @saved="onReproChanged" />
     <ReproductionEventsDialog ref="eventsDialog" @saved="reload" />
     <GenealogyDialog ref="genealogyDialog" />
     <WeightFormDialog ref="weightDialog" @saved="onWeightSaved" />
+    <InactivateAnimalDialog ref="inactivateDialog" @saved="onInactivated" />
+    <TagAssignDialog ref="tagAssignDialog" @saved="onTagChanged" />
+    <TagUnassignDialog ref="tagUnassignDialog" @saved="onTagChanged" />
+    <TagQrDialog ref="tagQrDialog" />
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3500">
       {{ snackbar.text }}
@@ -389,29 +477,36 @@
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { getErrorMessage } from '@/api/errors'
-import { REPRO_STATUS_COLORS, REPRO_EVENT_META } from '@/modules/livestock/constants'
+import { REPRO_EVENT_META, reproChips } from '@/modules/livestock/constants'
 import AnimalGallery from '@/modules/livestock/components/AnimalGallery.vue'
 import AnimalFormDialog from '@/modules/livestock/components/AnimalFormDialog.vue'
-import RegisterBirthDialog from '@/modules/livestock/components/RegisterBirthDialog.vue'
 import WeanDialog from '@/modules/livestock/components/WeanDialog.vue'
 import ReproductionEventsDialog from '@/modules/livestock/components/ReproductionEventsDialog.vue'
 import GenealogyDialog from '@/modules/livestock/components/GenealogyDialog.vue'
 import WeightFormDialog from '@/modules/livestock/components/WeightFormDialog.vue'
+import InactivateAnimalDialog from '@/modules/livestock/components/InactivateAnimalDialog.vue'
 import WeightChart from '@/modules/livestock/components/WeightChart.vue'
 import AnimalHealthTab from '@/modules/health/components/AnimalHealthTab.vue'
+import TagAssignDialog from '@/modules/tags/components/TagAssignDialog.vue'
+import TagUnassignDialog from '@/modules/tags/components/TagUnassignDialog.vue'
+import TagQrDialog from '@/modules/tags/components/TagQrDialog.vue'
+import { formatCode as formatTagCode } from '@/modules/tags/checksum'
 
 export default {
   name: 'AnimalDetailPage',
   components: {
     AnimalGallery,
     AnimalFormDialog,
-    RegisterBirthDialog,
     WeanDialog,
     ReproductionEventsDialog,
     GenealogyDialog,
     WeightFormDialog,
+    InactivateAnimalDialog,
     WeightChart,
     AnimalHealthTab,
+    TagAssignDialog,
+    TagUnassignDialog,
+    TagQrDialog,
   },
   data() {
     return {
@@ -553,14 +648,22 @@ export default {
       this.notify('Información reproductiva actualizada')
       this.load()
     },
+    onTagChanged() {
+      this.notify('Chapeta QR actualizada')
+      this.load()
+    },
+    formatTagCode,
+    onInactivated({ animal }) {
+      // El animal salió del hato activo: la ficha ya no aplica, volvemos al listado.
+      this.notify(`${animal.name} salió del hato`)
+      this.$router.push({ name: 'livestock-animals' })
+    },
     goTo(id) {
       if (id && id !== this.animalId) {
         this.$router.push({ name: 'livestock-animal-detail', params: { id } })
       }
     },
-    statusColor(status) {
-      return REPRO_STATUS_COLORS[status] || 'secondary'
-    },
+    reproChips,
     eventMeta(event) {
       return REPRO_EVENT_META[event.event_type] || { icon: 'mdi-circle-small', color: 'secondary', label: event.event_type }
     },

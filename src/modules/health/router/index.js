@@ -17,6 +17,24 @@ const healthRouter = {
       component: () =>
         import(/* webpackChunkName: "health-protocols" */ '@/modules/health/pages/ProtocolListPage.vue'),
     },
+    {
+      path: 'jornadas',
+      name: 'health-jornadas',
+      component: () =>
+        import(/* webpackChunkName: "health-jornadas" */ '@/modules/health/pages/JornadasPage.vue'),
+    },
+    {
+      path: 'jornadas/pesaje',
+      name: 'health-weighing',
+      component: () =>
+        import(/* webpackChunkName: "health-jornadas" */ '@/modules/health/pages/WeighingSessionPage.vue'),
+    },
+    {
+      path: 'jornadas/protocolo',
+      name: 'health-batch',
+      component: () =>
+        import(/* webpackChunkName: "health-jornadas" */ '@/modules/health/pages/BatchFormPage.vue'),
+    },
   ],
 }
 

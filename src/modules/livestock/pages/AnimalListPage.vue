@@ -1,17 +1,27 @@
 <template>
   <div>
+    <!-- Back to Lotes (solo en la vista filtrada por lote) -->
+    <v-btn v-if="lotId" variant="text" prepend-icon="mdi-arrow-left" :to="{ name: 'livestock-lots' }" class="mb-3 rise">
+      Lotes
+    </v-btn>
+
     <!-- Header -->
     <div class="d-flex flex-wrap align-center justify-space-between ga-4 mb-6 rise">
       <div>
-        <p class="hs-overline mb-1">Inventario del hato</p>
-        <h1 class="text-h5 font-weight-bold">Animales</h1>
+        <p class="hs-overline mb-1">{{ lotId ? 'Lote' : 'Inventario del hato' }}</p>
+        <h1 class="text-h5 font-weight-bold">{{ lotId ? lotTitle : 'Animales' }}</h1>
         <p class="text-body-2 text-medium-emphasis">
-          {{ isPartner
-            ? 'Los animales asociados a ti en ' + (activeFarmName || 'la finca') + ' (solo consulta).'
-            : 'Compras, hato inicial y todo lo que pasta en ' + (activeFarmName || 'tu finca') + '.' }}
+          <template v-if="lotId">
+            {{ filteredByLot.length }} {{ filteredByLot.length === 1 ? 'animal' : 'animales' }} en este lote.
+          </template>
+          <template v-else>
+            {{ isPartner
+              ? 'Los animales asociados a ti en ' + (activeFarmName || 'la finca') + ' (solo consulta).'
+              : 'Compras, hato inicial y todo lo que pasta en ' + (activeFarmName || 'tu finca') + '.' }}
+          </template>
         </p>
       </div>
-      <v-btn v-if="!isPartner" color="primary" prepend-icon="mdi-plus" @click="$refs.animalFormDialog.open()">
+      <v-btn v-if="!isPartner" color="primary" prepend-icon="mdi-plus" @click="openCreate">
         Nuevo animal
       </v-btn>
     </div>
@@ -105,13 +115,17 @@
           </template>
 
           <template #[`item.reproduction`]="{ item }">
-            <v-chip
-              v-if="item.reproduction && item.reproduction.status"
-              size="small"
-              :color="statusColor(item.reproduction.status)"
-            >
-              {{ item.reproduction.status_display }}
-            </v-chip>
+            <div v-if="reproChips(item.reproduction).length" class="d-flex flex-wrap ga-1">
+              <v-chip
+                v-for="chip in reproChips(item.reproduction)"
+                :key="chip.key"
+                size="small"
+                :color="chip.color"
+                :prepend-icon="chip.icon || undefined"
+              >
+                {{ chip.label }}
+              </v-chip>
+            </div>
             <span v-else class="text-medium-emphasis">—</span>
           </template>
 
@@ -122,12 +136,13 @@
               @detail="goToDetail(item)"
               @edit="$refs.animalFormDialog.open(item)"
               @delete="askDelete(item)"
-              @birth="$refs.birthDialog.open(item)"
+              @birth="$refs.animalFormDialog.openBirth(item)"
               @wean="$refs.weanDialog.open(item)"
               @events="$refs.reproEventsDialog.open(item)"
               @genealogy="$refs.genealogyDialog.open(item)"
               @weight="$refs.weightDialog.open(item)"
               @treatment="$refs.treatmentDialog.open(item)"
+              @inactivate="$refs.inactivateDialog.open(item)"
             />
           </template>
         </v-data-table>
@@ -152,23 +167,26 @@
                   @detail="goToDetail(animal)"
                   @edit="$refs.animalFormDialog.open(animal)"
                   @delete="askDelete(animal)"
-                  @birth="$refs.birthDialog.open(animal)"
+                  @birth="$refs.animalFormDialog.openBirth(animal)"
                   @wean="$refs.weanDialog.open(animal)"
                   @events="$refs.reproEventsDialog.open(animal)"
                   @genealogy="$refs.genealogyDialog.open(animal)"
                   @weight="$refs.weightDialog.open(animal)"
                   @treatment="$refs.treatmentDialog.open(animal)"
+                  @inactivate="$refs.inactivateDialog.open(animal)"
                 />
               </span>
             </template>
           </v-card-item>
           <v-card-text class="d-flex flex-wrap align-center ga-2 pt-0">
             <v-chip
-              v-if="animal.reproduction && animal.reproduction.status"
+              v-for="chip in reproChips(animal.reproduction)"
+              :key="chip.key"
               size="small"
-              :color="statusColor(animal.reproduction.status)"
+              :color="chip.color"
+              :prepend-icon="chip.icon || undefined"
             >
-              {{ animal.reproduction.status_display }}
+              {{ chip.label }}
             </v-chip>
             <span v-if="animal.mother_name" class="text-caption text-medium-emphasis">
               Madre: {{ animal.mother_name }}
@@ -182,12 +200,12 @@
     </template>
 
     <AnimalFormDialog ref="animalFormDialog" @saved="onSaved" />
-    <RegisterBirthDialog ref="birthDialog" @saved="onBirthSaved" />
     <WeanDialog ref="weanDialog" @saved="notify('Destete registrado')" />
     <ReproductionEventsDialog ref="reproEventsDialog" @saved="notify('Evento reproductivo registrado')" />
     <GenealogyDialog ref="genealogyDialog" />
     <WeightFormDialog ref="weightDialog" @saved="onWeightSaved" />
     <TreatmentFormDialog ref="treatmentDialog" @saved="notify('Tratamiento creado')" />
+    <InactivateAnimalDialog ref="inactivateDialog" @saved="onInactivated" />
 
     <!-- Delete confirmation -->
     <v-dialog v-model="deleteDialog" max-width="420">
@@ -217,24 +235,24 @@ import { getErrorMessage } from '@/api/errors'
 import { API_ORIGIN } from '@/api/client'
 import AnimalFormDialog from '@/modules/livestock/components/AnimalFormDialog.vue'
 import AnimalActionsMenu from '@/modules/livestock/components/AnimalActionsMenu.vue'
-import RegisterBirthDialog from '@/modules/livestock/components/RegisterBirthDialog.vue'
 import WeanDialog from '@/modules/livestock/components/WeanDialog.vue'
 import ReproductionEventsDialog from '@/modules/livestock/components/ReproductionEventsDialog.vue'
 import GenealogyDialog from '@/modules/livestock/components/GenealogyDialog.vue'
 import WeightFormDialog from '@/modules/livestock/components/WeightFormDialog.vue'
+import InactivateAnimalDialog from '@/modules/livestock/components/InactivateAnimalDialog.vue'
 import TreatmentFormDialog from '@/modules/health/components/TreatmentFormDialog.vue'
-import { REPRO_STATUS_COLORS } from '@/modules/livestock/constants'
+import { reproChips } from '@/modules/livestock/constants'
 
 export default {
   name: 'AnimalListPage',
   components: {
     AnimalFormDialog,
     AnimalActionsMenu,
-    RegisterBirthDialog,
     WeanDialog,
     ReproductionEventsDialog,
     GenealogyDialog,
     WeightFormDialog,
+    InactivateAnimalDialog,
     TreatmentFormDialog,
   },
   data() {
@@ -260,14 +278,31 @@ export default {
     ...mapGetters('livestock', { animals: 'allAnimals' }),
     ...mapGetters('livestock', ['females', 'males']),
     ...mapGetters('auth', ['activeFarmName', 'isPartner']),
+    ...mapGetters('configuration', { lots: 'activeLots' }),
+    // Vista filtrada por lote: la ruta livestock-lot-animals trae :lotId
+    // ('none' = sin lote). En la ruta normal de animales es undefined.
+    lotId() {
+      return this.$route.params.lotId || null
+    },
+    lotTitle() {
+      if (this.lotId === 'none') return 'Sin lote'
+      const lot = this.lots.find((l) => String(l.id) === String(this.lotId))
+      return lot ? lot.name : 'Lote'
+    },
+    // Base del hato según el lote (o todo el hato en la vista normal).
+    filteredByLot() {
+      if (!this.lotId) return this.animals
+      if (this.lotId === 'none') return this.animals.filter((a) => !a.lot)
+      return this.animals.filter((a) => String(a.lot) === String(this.lotId))
+    },
     // El socio es de solo consulta: sin columna de acciones.
     tableHeaders() {
       return this.isPartner ? this.headers.filter((h) => h.key !== 'actions') : this.headers
     },
     filteredAnimals() {
       const query = (this.search || '').trim().toLowerCase()
-      if (!query) return this.animals
-      return this.animals.filter((animal) =>
+      if (!query) return this.filteredByLot
+      return this.filteredByLot.filter((animal) =>
         [animal.name, animal.mother_name, animal.father_name]
           .filter(Boolean)
           .some((value) => value.toLowerCase().includes(query))
@@ -276,6 +311,10 @@ export default {
   },
   created() {
     this.loadAnimals()
+    // Para el título del lote y el select del formulario.
+    if (!this.lots.length) {
+      this.fetchState({ module: 'configuration', nameState: 'lots', url: '/configuration/lots/' }).catch(() => {})
+    }
   },
   methods: {
     ...mapActions('shared', ['fetchState', 'deleteItem']),
@@ -294,6 +333,11 @@ export default {
         this.loading = false
       }
     },
+    openCreate() {
+      // Desde la vista de un lote, precarga ese lote en el formulario.
+      const prefill = this.lotId && this.lotId !== 'none' ? { lot: this.lotId } : undefined
+      this.$refs.animalFormDialog.open(null, prefill)
+    },
     goToDetail(animal) {
       this.$router.push({ name: 'livestock-animal-detail', params: { id: animal.id } })
     },
@@ -306,9 +350,7 @@ export default {
     sexIcon(animal) {
       return animal.sex === 'FEMALE' ? 'mdi-gender-female' : 'mdi-gender-male'
     },
-    statusColor(status) {
-      return REPRO_STATUS_COLORS[status] || 'secondary'
-    },
+    reproChips,
     formatDate(date) {
       if (!date) return '—'
       return new Date(`${date}T00:00:00`).toLocaleDateString('es-CO', {
@@ -350,11 +392,15 @@ export default {
         this.deleting = false
       }
     },
-    onSaved({ isEdit }) {
+    onSaved({ isEdit, birth, animal }) {
+      if (birth) {
+        this.notify(animal ? `Parto registrado · ${animal.name} se añadió al hato` : 'Parto registrado')
+        return
+      }
       this.notify(isEdit ? 'Animal actualizado' : 'Animal registrado')
     },
-    onBirthSaved({ calfName }) {
-      this.notify(calfName ? `Parto registrado · ${calfName} se añadió al hato` : 'Parto registrado')
+    onInactivated({ animal, exit }) {
+      this.notify(`${animal.name} salió del hato (${exit.reason_name})`)
     },
     onWeightSaved({ animal, record }) {
       this.notify(`Peso de ${animal.name} registrado: ${record.weight_kg} kg`)

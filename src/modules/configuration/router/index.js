@@ -34,6 +34,24 @@ const configurationRouter = {
           /* webpackChunkName: "config-medications" */ '@/modules/configuration/pages/MedicationListPage.vue'
         ),
     },
+    {
+      path: 'inactivation-reasons',
+      name: 'config-inactivation-reasons',
+      meta: { roles: ['OWNER', 'ADMIN'] },
+      component: () =>
+        import(
+          /* webpackChunkName: "config-inactivation-reasons" */ '@/modules/configuration/pages/InactivationReasonListPage.vue'
+        ),
+    },
+    {
+      path: 'lots',
+      name: 'config-lots',
+      meta: { roles: ['OWNER', 'ADMIN'] },
+      component: () =>
+        import(
+          /* webpackChunkName: "config-lots" */ '@/modules/configuration/pages/LotListPage.vue'
+        ),
+    },
   ],
 }
 

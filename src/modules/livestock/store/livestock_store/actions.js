@@ -54,6 +54,15 @@ export default {
     return res.data
   },
 
+  // Salida del hato (AnimalExit): motivo del catálogo + fecha. Crear la salida
+  // inactiva al animal server-side, así que se re-fetchea el hato (el animal
+  // desaparece de la lista activa pero conserva todo su historial).
+  async inactivateAnimal({ dispatch }, { animalId, data }) {
+    const res = await apiClient.post(`/livestock/animals/${animalId}/exits/`, data)
+    await dispatch('refreshAnimals')
+    return res.data
+  },
+
   // Control de peso: pesajes por animal. La comparativa contra el pesaje
   // anterior (previous_weight_kg / diff_kg) viene derivada del backend.
   async fetchWeights(context, animalId) {

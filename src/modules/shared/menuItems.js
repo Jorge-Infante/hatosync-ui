@@ -14,7 +14,17 @@
 const ADMIN_ROLES = ['OWNER', 'ADMIN']
 
 const menuItems = [
+  // Cifras de todo el hato: el socio (PARTNER) no lo ve (403 en el backend).
+  {
+    title: 'Panel',
+    icon: 'mdi-view-dashboard-outline',
+    roles: [...ADMIN_ROLES, 'EMPLOYEE'],
+    to: { name: 'dashboard-production' },
+  },
   { title: 'Animales', icon: 'mdi-cow', to: { name: 'livestock-animals' } },
+  { title: 'Lotes', icon: 'mdi-select-group', to: { name: 'livestock-lots' } },
+  { title: 'Potreros', icon: 'mdi-map-outline', to: { name: 'paddock-list' } },
+  { title: 'Jornadas', icon: 'mdi-clipboard-play-outline', to: { name: 'health-jornadas' } },
   {
     title: 'Sanidad',
     icon: 'mdi-hospital-box',
@@ -23,6 +33,9 @@ const menuItems = [
       { title: 'Protocolos', icon: 'mdi-clipboard-list-outline', roles: ADMIN_ROLES, to: { name: 'health-protocols' } },
     ],
   },
+  // Generar/descargar lotes de chapetas es administrativo; la chapeta de cada
+  // animal se ve/asocia desde su ficha (todos los roles con permiso de campo).
+  { title: 'Chapetas QR', icon: 'mdi-qrcode', roles: ADMIN_ROLES, to: { name: 'tags-batches' } },
   {
     title: 'Configuración',
     icon: 'mdi-cog-outline',
@@ -35,6 +48,12 @@ const menuItems = [
         to: { name: 'config-identification-types' },
       },
       { title: 'Medicamentos', icon: 'mdi-pill', to: { name: 'config-medications' } },
+      { title: 'Lotes', icon: 'mdi-select-group', to: { name: 'config-lots' } },
+      {
+        title: 'Inactivación',
+        icon: 'mdi-logout-variant',
+        to: { name: 'config-inactivation-reasons' },
+      },
     ],
   },
   { title: 'Mis fincas', icon: 'mdi-barn', roles: [...ADMIN_ROLES, 'EMPLOYEE', null], to: { name: 'farm-list' } },

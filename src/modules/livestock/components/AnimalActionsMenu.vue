@@ -79,6 +79,13 @@
           <v-list-item-title>Editar</v-list-item-title>
         </v-list-item>
 
+        <v-list-item class="hs-actions__item" @click="$emit('inactivate', animal)">
+          <template #prepend>
+            <v-icon size="18" class="hs-actions__icon">mdi-logout-variant</v-icon>
+          </template>
+          <v-list-item-title>Sacar del hato</v-list-item-title>
+        </v-list-item>
+
         <v-list-item class="hs-actions__item hs-actions__item--danger" @click="$emit('delete', animal)">
           <template #prepend>
             <v-icon size="18" class="hs-actions__icon">mdi-delete-outline</v-icon>
@@ -99,7 +106,7 @@ export default {
       required: true,
     },
   },
-  emits: ['detail', 'edit', 'delete', 'birth', 'wean', 'events', 'genealogy', 'weight', 'treatment'],
+  emits: ['detail', 'edit', 'delete', 'birth', 'wean', 'events', 'genealogy', 'weight', 'treatment', 'inactivate'],
   computed: {
     isFemale() {
       return this.animal.sex === 'FEMALE'
@@ -110,7 +117,12 @@ export default {
     headerMeta() {
       const repro = this.animal.reproduction || {}
       const parts = [this.animal.sex_display]
-      if (repro.status_display) parts.push(repro.status_display)
+      // Parida es independiente del ciclo (Vacía/Servida/Preñada); "Vacía" se
+      // omite mientras está parida — mismas reglas que reproChips().
+      if (repro.calf_at_side) parts.push('Parida')
+      if (repro.status_display && !(repro.status === 'OPEN' && repro.calf_at_side)) {
+        parts.push(repro.status_display)
+      }
       if (repro.open_days !== null && repro.open_days !== undefined) {
         parts.push(`${repro.open_days} días abiertos`)
       }

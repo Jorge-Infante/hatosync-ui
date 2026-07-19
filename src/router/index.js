@@ -5,6 +5,9 @@ import farmsRouter from '@/modules/farms/router'
 import livestockRouter from '@/modules/livestock/router'
 import configurationRouter from '@/modules/configuration/router'
 import healthRouter from '@/modules/health/router'
+import paddocksRouter from '@/modules/paddocks/router'
+import dashboardRouter from '@/modules/dashboard/router'
+import tagsRouter from '@/modules/tags/router'
 
 const routes = [
   {
@@ -30,6 +33,18 @@ const routes = [
   {
     path: '/health',
     ...healthRouter,
+  },
+  {
+    path: '/paddocks',
+    ...paddocksRouter,
+  },
+  {
+    path: '/dashboard',
+    ...dashboardRouter,
+  },
+  {
+    path: '/tags',
+    ...tagsRouter,
   },
 ]
 

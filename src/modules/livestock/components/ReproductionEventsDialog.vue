@@ -13,16 +13,14 @@
         <div class="hs-repro-summary mb-4 pa-4">
           <p class="hs-repro-summary__name mb-1">{{ animal.name }}</p>
           <div class="d-flex flex-wrap align-center ga-2">
-            <v-chip v-if="repro.status" size="small" :color="statusColor">
-              {{ repro.status_display }}
-            </v-chip>
             <v-chip
-              v-if="repro.calf_at_side"
+              v-for="chip in summaryChips"
+              :key="chip.key"
               size="small"
-              color="accent"
-              prepend-icon="mdi-baby-bottle-outline"
+              :color="chip.color"
+              :prepend-icon="chip.icon || undefined"
             >
-              Cría al pie
+              {{ chip.label }}
             </v-chip>
             <span v-if="repro.open_days !== null && repro.open_days !== undefined" class="text-caption text-medium-emphasis">
               {{ repro.open_days }} días abiertos
@@ -168,7 +166,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { getErrorMessage } from '@/api/errors'
-import { REPRO_STATUS_COLORS, REPRO_EVENT_META } from '@/modules/livestock/constants'
+import { REPRO_EVENT_META, reproChips } from '@/modules/livestock/constants'
 
 const emptyForm = (today) => ({
   event_type: null,
@@ -216,8 +214,8 @@ export default {
     repro() {
       return (this.animal && this.animal.reproduction) || {}
     },
-    statusColor() {
-      return REPRO_STATUS_COLORS[this.repro.status] || 'secondary'
+    summaryChips() {
+      return reproChips(this.repro)
     },
     today() {
       return new Date().toISOString().slice(0, 10)
